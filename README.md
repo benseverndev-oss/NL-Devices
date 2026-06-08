@@ -12,6 +12,8 @@ is the interface.
 
 - **[DESIGN.md](./DESIGN.md)** — product thesis, target architecture, and the
   adopt/build/avoid decisions.
+- **[BUSINESS.md](./BUSINESS.md)** — monetization & business-model strategy
+  (the layered, sequenced revenue model).
 - **[RESEARCH.md](./RESEARCH.md)** — cited prior-art & competitive research with
   confidence levels behind every decision.
 

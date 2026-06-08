@@ -136,7 +136,9 @@ deterministic and own correctness.
 2. **Monetization vise** — NL-wanting segment won't pay; paying segment won't trust.
    The proven model is **manufacturing integration** (free tool → fab/parts margin,
    à la JLC/EasyEDA $273M). → **Treat fab integration as a first-class business-model
-   candidate, not a late feature.**
+   candidate, not a late feature.** Worked through in **[BUSINESS.md](./BUSINESS.md)**:
+   the tool is a loss-leader; revenue comes from validated outcomes (price the avoided
+   respin), assembly-order economics, and the supplier-pays design-win model.
 3. **Data moat is expensive + partly legally boxed in** (~86% extraction ceiling →
    human review; distributor APIs closed). → **Bootstrap from open + JLC data;
    negotiate Nexar/Octopart with ML-training rights in writing if needed.**
