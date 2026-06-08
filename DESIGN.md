@@ -147,6 +147,8 @@ deterministic and own correctness.
 
 ## 7. Immediate next steps
 
+> Scoped in detail in **[SPIKE.md](./SPIKE.md)** — steps 1–3 below are that spike.
+
 1. **Spike the substrate:** prototype the same 1–2 simple boards in both **atopile**
    and **SKiDL**; pick one.
 2. **Define the block contract:** what is a "verified block"? (ports, electrical

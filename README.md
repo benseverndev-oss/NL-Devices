@@ -14,6 +14,8 @@ is the interface.
   adopt/build/avoid decisions.
 - **[BUSINESS.md](./BUSINESS.md)** — monetization & business-model strategy
   (the layered, sequenced revenue model).
+- **[SPIKE.md](./SPIKE.md)** — Phase-0 engineering spike: verified blocks +
+  seam validation, and the atopile-vs-SKiDL bake-off.
 - **[RESEARCH.md](./RESEARCH.md)** — cited prior-art & competitive research with
   confidence levels behind every decision.
 
