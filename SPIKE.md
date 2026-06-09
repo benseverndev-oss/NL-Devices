@@ -107,6 +107,13 @@ the substrate (or a hybrid).
 > assume it — especially the "programmatic drivability" row, which the LLM
 > orchestrator will live or die on.
 
+> **Observed after steps 1–2** (see [`spike/README.md`](./spike/README.md)): the
+> hypothesis largely holds — the tools are **complementary**. atopile gives typed
+> seams + constraint solving + manufacturable passives but **does not auto-pick ICs**;
+> SKiDL gives real IC definitions + pin-level ERC + (via our wrapper) SPICE but **no
+> typed seam contract**. PySpice was dropped for a direct-ngspice wrapper (step 0).
+> The remaining decisive row is **seam-fault detection (step 3)**.
+
 ---
 
 ## 6. Acceptance criteria (spike passes iff all hold)
@@ -128,7 +135,7 @@ the substrate (or a hybrid).
 |---|---|---|
 | 0 ✅ | Env: install atopile, SKiDL, ngspice; reproduce each tool's hello-world — **DONE, all green** (see [`spike/README.md`](./spike/README.md)) | green baseline |
 | 1 ✅ | Implement the 3 blocks + compose, in **atopile** (typed interfaces, `assert` invariants, `ato build`) — **DONE** ([`spike/atopile/sensor_node.ato`](./spike/atopile/sensor_node.ato); results in [`spike/README.md`](./spike/README.md)) | `.ato` slice + KiCad/BOM |
-| 2 | Implement the 3 blocks + compose, in **SKiDL** (`@SubCircuit`, `Interface`, `ERC()`, `generate_netlist`) | Python slice + netlist |
+| 2 ✅ | Implement the 3 blocks + compose, in **SKiDL** (`@subcircuit`, `ERC()`, `generate_netlist`) — **DONE**, ERC clean, real ICs in netlist ([`spike/skidl/sensor_node_skidl.py`](./spike/skidl/sensor_node_skidl.py)) | Python slice + netlist |
 | 3 | Build the **thin seam-checker** (power-domain compat, I²C bus rules, completeness) over each | validator module(s) |
 | 4 | Inject the **3 faults**; confirm each is caught + correct design passes | fault-detection log |
 | 5 | **PySpice** DC op-point on the power rail; assert Vout ≈ 3V3 ± tol | sim assertion |

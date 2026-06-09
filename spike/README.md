@@ -142,3 +142,46 @@ injected seam faults, or whether we still need a custom seam layer.
 cd spike/atopile && ato build -b sensor_node    # atopile 0.12.5, Python 3.13
 # artifacts in build/builds/sensor_node/
 ```
+
+---
+
+# Step 2: Same Slice in SKiDL (COMPLETE ✅) + the bake-off contrast
+
+`skidl/sensor_node_skidl.py` — the identical slice as three `@subcircuit`
+functions (`power_block` AMS1117-3.3, `mcu_block` I2C controller, `sensor_block`
+24LC256 EEPROM), composed over shared nets, with `ERC()` + `generate_netlist()`.
+
+## What works
+| Capability | Evidence |
+|---|---|
+| **Real ICs in the netlist** | `sensor_node.net` (451 lines) contains **`AMS1117-3.3`** and **`24LC256`** as real components + full passive BOM — by naming the KiCad symbol directly (no picker needed) |
+| **Pin-level ERC (controllable)** | first run flagged *"Insufficient drive current on net 5V/GND for POWER-IN pin"* (correct!); adding `net.drive = POWER` (≈ KiCad PWR_FLAG) → **"No errors or warnings"** |
+| **Hierarchy preserved** | netlist carries `/power_block1/`, `/mcu_block1/`, `/sensor_block1/` sheets |
+| **Seam nets** | `5V`, `3V3`, `GND`, `SCL`, `SDA` |
+
+## The bake-off contrast (the core decision input)
+
+| Dimension | atopile (step 1) | SKiDL (step 2) |
+|---|---|---|
+| **Typed port contract** (voltage domain, I2C) | ✅ native (`ElectricPower`/`I2C`) | ❌ bare nets — *we'd build the type layer* |
+| **Constraint solving** (params + tolerance) | ✅ LDO out solved `[3.234V, 3.366V]` | ❌ none |
+| **Pin-level ERC** | ⚠️ post-design checks (not classic pin ERC) | ✅ real, type-aware, controllable |
+| **IC part resolution** | ❌ LDO/EEPROM **don't auto-pick** | ✅ name the symbol → IC in netlist |
+| **Passive resolution** | ✅ auto-picked to **real LCSC MPNs** | ⚠️ manual (you give value + footprint) |
+| **Manufacturing data (BOM w/ MPN)** | ✅ LCSC ids | ❌ generic KiCad symbols, no MPN |
+| **SPICE** | ❌ none | ✅ via our direct-ngspice wrapper |
+
+**Conclusion — the two are complementary, exactly as hypothesized.** atopile owns
+the *typed seam + constraint solving + manufacturable passives* (the moat-relevant
+authoring layer); SKiDL/KiCad owns *real IC definitions + pin-level ERC + SPICE*
+(the electrical-validation layer). Neither alone is a complete substrate. The
+**deciding test is Step 3**: does atopile's typed model actually *catch* the
+injected seam faults? If yes, atopile-as-author + a SKiDL/ngspice validation
+harness is the hybrid; if no, we build a custom seam layer regardless.
+
+## Reproduce
+```bash
+cd spike/skidl && . .venv/bin/activate
+export KICAD_SYMBOL_DIR=$PWD/../kicad-symbols KICAD8_SYMBOL_DIR=$PWD/../kicad-symbols
+python sensor_node_skidl.py        # -> ERC clean + sensor_node.net
+```
