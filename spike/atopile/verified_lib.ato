@@ -10,6 +10,7 @@ import Resistor
 from "parts/Advanced_Monolithic_Systems_AMS1117_3_3/Advanced_Monolithic_Systems_AMS1117_3_3.ato" import Advanced_Monolithic_Systems_AMS1117_3_3_package
 from "parts/Microchip_Tech_AT24C256C_SSHL_T/Microchip_Tech_AT24C256C_SSHL_T.ato" import Microchip_Tech_AT24C256C_SSHL_T_package
 from "parts/Texas_Instruments_LM75AIMX_NOPB/Texas_Instruments_LM75AIMX_NOPB.ato" import Texas_Instruments_LM75AIMX_NOPB_package
+from "parts/STMicroelectronics_STM32F103C8T6/STMicroelectronics_STM32F103C8T6.ato" import STMicroelectronics_STM32F103C8T6_package
 
 # --- power_3v3_ldo : 5V -> 3V3 (AMS1117-3.3, C6186) --------------------------
 module PowerBlock:
@@ -31,16 +32,70 @@ module PowerBlock:
     cap_out.unnamed[1] ~ power_out.lv
     assert power_out.voltage within 3.3V +/- 5%
 
-# --- mcu_i2c_controller : decoupling + I2C bus pull-ups ----------------------
+# --- mcu_i2c_controller : STM32F103C8T6 ARM Cortex-M3, I2C controller (C8734) -
+# A REAL microcontroller — the brain. Runs on its internal 8 MHz RC oscillator
+# (no crystal needed to function), I2C1 on PB6/PB7, programmed via SWD (PA13/PA14,
+# left for a board-level header). Owns the bus: provides the SCL/SDA pull-ups.
+# This is what makes an emitted board actually compute, not just route a rail.
 module McuBlock:
-    power = new ElectricPower
-    i2c = new I2C
-    cap = new Capacitor
-    cap.capacitance = 100nF +/- 20%
-    cap.unnamed[0] ~ power.hv
-    cap.unnamed[1] ~ power.lv
+    power = new ElectricPower      # 3V3 rail in
+    i2c = new I2C                  # I2C1 controller (PB6=SCL, PB7=SDA)
+    mcu = new STMicroelectronics_STM32F103C8T6_package
+
+    # power: every VDD/VBAT/VDDA to 3V3, every VSS/VSSA to GND
+    mcu.VDD_1 ~ power.hv
+    mcu.VDD_2 ~ power.hv
+    mcu.VDD_3 ~ power.hv
+    mcu.VBAT ~ power.hv            # no coin cell — tie to the main rail
+    mcu.VDDA ~ power.hv            # analog supply
+    mcu.VSS_1 ~ power.lv
+    mcu.VSS_2 ~ power.lv
+    mcu.VSS_3 ~ power.lv
+    mcu.VSSA ~ power.lv
+
+    # decoupling: 100nF per VDD pin + 4.7uF bulk + 1uF on VDDA
+    dec1 = new Capacitor
+    dec2 = new Capacitor
+    dec3 = new Capacitor
+    bulk = new Capacitor
+    deca = new Capacitor
+    dec1.capacitance = 100nF +/- 20%
+    dec2.capacitance = 100nF +/- 20%
+    dec3.capacitance = 100nF +/- 20%
+    bulk.capacitance = 4.7uF +/- 20%
+    deca.capacitance = 1uF +/- 20%
+    dec1.unnamed[0] ~ power.hv
+    dec1.unnamed[1] ~ power.lv
+    dec2.unnamed[0] ~ power.hv
+    dec2.unnamed[1] ~ power.lv
+    dec3.unnamed[0] ~ power.hv
+    dec3.unnamed[1] ~ power.lv
+    bulk.unnamed[0] ~ power.hv
+    bulk.unnamed[1] ~ power.lv
+    deca.unnamed[0] ~ power.hv
+    deca.unnamed[1] ~ power.lv
+
+    # reset: NRST pull-up + 100nF to GND (standard RC)
+    nrst_pullup = new Resistor
+    nrst_cap = new Capacitor
+    nrst_pullup.resistance = 10kohm +/- 5%
+    nrst_cap.capacitance = 100nF +/- 20%
+    nrst_pullup.unnamed[0] ~ mcu.NRST
+    nrst_pullup.unnamed[1] ~ power.hv
+    nrst_cap.unnamed[0] ~ mcu.NRST
+    nrst_cap.unnamed[1] ~ power.lv
+
+    # BOOT0 -> GND via 10k: boot from main flash
+    boot0_pulldown = new Resistor
+    boot0_pulldown.resistance = 10kohm +/- 5%
+    boot0_pulldown.unnamed[0] ~ mcu.BOOT0
+    boot0_pulldown.unnamed[1] ~ power.lv
+
+    # I2C1 (PB6/PB7) onto the typed bus, with the bus pull-ups
     i2c.scl.reference ~ power
     i2c.sda.reference ~ power
+    mcu.PB6 ~ i2c.scl.line
+    mcu.PB7 ~ i2c.sda.line
     scl_pullup = new Resistor
     sda_pullup = new Resistor
     scl_pullup.resistance = 4.7kohm +/- 5%
@@ -49,6 +104,7 @@ module McuBlock:
     scl_pullup.unnamed[1] ~ power.hv
     sda_pullup.unnamed[0] ~ i2c.sda.line
     sda_pullup.unnamed[1] ~ power.hv
+
     assert power.voltage within 3.3V +/- 5%
 
 # --- sensor_eeprom_24c256 : EEPROM (AT24C256, C6482) -------------------------

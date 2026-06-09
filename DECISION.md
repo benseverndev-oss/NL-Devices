@@ -117,7 +117,7 @@ validator are now de-risked enough to build on.
    strappable range; capacity-exhaustion gated) and ✅ an **electrical gate**
    (`electrical.py` — ngspice rail-load + pull-up-current checks). **Remaining for a
    product:** inject a real `call_model` (needs an API key); richer block library
-   (real MCU, more peripherals).
+   (✅ real MCU now authored — STM32F103C8T6 `C8734`; more peripherals/bus types next).
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in
 > [`BUSINESS.md`](./BUSINESS.md) / [`RESEARCH.md`](./RESEARCH.md); this memo closes

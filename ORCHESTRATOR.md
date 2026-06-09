@@ -41,8 +41,8 @@ from each part's strappable range (codegen straps `A0/A1/A2` per device); the ga
 only rejects when the bus genuinely runs out of address space. **Electrical gate**
 (#3): every passing design also clears ngspice rail-load and pull-up-current checks
 — the gate has teeth (an overloaded rail or a too-small pull-up is rejected; see
-`python3 electrical.py`). Every block selected is a real, orderable part (`C6186`,
-`C477979`, `C6482`).
+`python3 electrical.py`). Every block selected is a real, orderable part (`C8734`
+STM32 MCU, `C6186`, `C477979`, `C6482`).
 
 ## The loop ends in a real BOM (`--build`)
 
@@ -52,9 +52,10 @@ all the way: the verified blocks are authored `.ato` modules
 the top-level `App` from the slice and runs `ato build`. The temperature-logger spec
 yields a manufacturable BOM:
 ```
-U1, SOT-223-3, AMS1117-3.3,      C6186     (LDO)
-U2, SOIC-8,    LM75AIMX/NOPB,    C477979   (temp sensor @0x48)
-U3, SOIC-8,    AT24C256C-SSHL-T, C6482     (EEPROM @0x50)
+U1, LQFP-48,   STM32F103C8T6,    C8734     (MCU — the brain)
+U2, SOT-223-3, AMS1117-3.3,      C6186     (LDO)
+U3, SOIC-8,    LM75AIMX/NOPB,    C477979   (temp sensor @0x48)
+U4, SOIC-8,    AT24C256C-SSHL-T, C6482     (EEPROM @0x50)
 R1,R2 4.7kΩ C25900 · C1/C2/C3 decoupling — all real LCSC MPNs
 ```
 **NL → orderable board, gated by validation.** Codegen composes pre-verified block
@@ -111,8 +112,10 @@ parts; the reject-unsafe-design behaviour.
    strapped by `codegen.py`); capacity-exhaustion is a real gate error.
 4. ✅ **DONE — electrical gate**: `electrical.py` folds ngspice rail-load and I2C
    pull-up-current checks into the gate.
-5. **Still open — richer library** (more block types, real MCU) and a real
-   `call_model` for the LLM seam (needs an API key).
+5. ✅ **Real MCU landed** — `mcu_i2c_controller` is now an STM32F103C8T6 (`C8734`),
+   so every block in the catalog is a real orderable part (see `spike/README.md`).
+   **Still open:** richer library (more block types / a second bus + power topology)
+   and a live `call_model` run for the LLM seam (needs an API key).
 
 ## Why this matters
 

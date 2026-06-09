@@ -383,3 +383,41 @@ too-small pull-up.
 ```bash
 cd spike && python3 orchestrator.py --build    # NL -> compose -> gate -> BOM
 ```
+
+---
+
+# Real MCU block — the board gets a brain (GAPS #2) ✅
+
+The `mcu_i2c_controller` block was a placeholder (`bound_part: null` — just a
+decoupling cap + two pull-ups), so the "sensor node" had no processor and wouldn't
+function. It is now a **real STM32F103C8T6** (ARM Cortex-M3, LQFP-48, LCSC `C8734`,
+214k in stock), authored via `ato create part --search C8734` and wrapped as a typed
+`McuBlock` in [`atopile/verified_lib.ato`](./atopile/verified_lib.ato):
+
+- **Power:** all three VDD pins + VBAT + VDDA to the 3V3 rail; all VSS + VSSA to GND.
+- **Decoupling:** 100nF per VDD pin + a 4.7µF bulk + a 1µF on VDDA.
+- **Reset:** NRST pull-up (10k) + 100nF to GND (standard RC).
+- **Boot:** BOOT0 → GND via 10k (boot from main flash).
+- **I2C1** on PB6 (SCL) / PB7 (SDA) onto the typed bus, owning the 4.7k bus pull-ups.
+- Runs on the internal 8 MHz RC oscillator — **no crystal needed to function**; SWD
+  (PA13/PA14) is left for a board-level programming header.
+
+## Result: the temperature-logger BOM now includes the MCU
+```
+U1, LQFP-48,    STM32F103C8T6,    C8734     (MCU — the brain)
+U2, SOT-223-3,  AMS1117-3.3,      C6186     (LDO)
+U3, SOIC-8,     LM75AIMX/NOPB,    C477979   (temp sensor @0x48)
+U4, SOIC-8,     AT24C256C-SSHL-T, C6482     (EEPROM @0x50)
++ decoupling (4×100nF, 4.7µF, 2×1µF), NRST RC, BOOT0 10k, I2C pull-ups — all real MPNs
+```
+Closes GAPS #2: the verified-block pattern is proven past passives + small ICs to a
+**48-pin microcontroller**, and `orchestrator.py` now reports `mcu = mcu_i2c_controller
+[C8734]` (was `[abstract]`). The contract in
+[`blocks/mcu_i2c_controller.yaml`](./blocks) carries the real MPN + worst-case 50mA
+run current (which the electrical gate uses for rail loading).
+
+## Reproduce
+```bash
+cd spike/atopile && ato create part --search C8734 --accept-single   # fetch the MCU
+cd spike && python3 orchestrator.py --build                          # MCU resolves in the BOM
+```

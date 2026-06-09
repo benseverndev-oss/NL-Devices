@@ -76,10 +76,12 @@ electrical leg is a placeholder.
 - ⚠️ The heuristic router is fine as a deterministic fallback but must not be
   mistaken for the product.
 
-### 4b. Verified-block library — 🔴 (the acknowledged moat, still tiny)
-- ❌ **No real MCU.** `mcu_i2c_controller` is `bound_part: null` — literally a
-  decoupling cap + two pull-up resistors. **The flagship "sensor node" has no brain;
-  the emitted board would not function.** This is the single most concrete hardware gap.
+### 4b. Verified-block library — 🟠 (real MCU now landed; breadth still thin)
+- ✅ **Real MCU landed.** `mcu_i2c_controller` is now an **STM32F103C8T6** (LQFP-48,
+  LCSC `C8734`) with full support circuitry — all VDD/VBAT/VDDA decoupling, the NRST
+  reset RC, the BOOT0 strap, and I2C1 (PB6/PB7) bus pull-ups — authored in
+  `verified_lib.ato` and resolving to a real MPN in the BOM (`spike/README.md`). The
+  flagship sensor node now has a **brain**; the emitted board would function.
 - ⚠️ **4 blocks, 1 bus type (I2C), 1 power topology (one LDO).** No SPI/UART, no
   buck/boost, no battery/charging, no USB, no connectors, no analog, no crystal/reset/
   programming header — none of the parts a real board needs around the MCU.
@@ -143,10 +145,11 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    recovery checks, runnable in CI without a key (`--live` for the real model).
    **Caveat:** proves the *mechanism* on a 4-block catalog; a live run needs
    `ANTHROPIC_API_KEY`, and breadth (item 2) is what proves it *scales*.
-2. **Author one real MCU block (🔴).** A concrete microcontroller (e.g. an
-   STM32/ESP/RP2 with real LCSC part, power, decoupling, reset, programming header).
-   Until this exists, no emitted board functions — and it exercises whether the block
-   pattern scales beyond passives+EEPROM.
+2. ✅ **DONE — real MCU block authored.** `mcu_i2c_controller` is now a real
+   **STM32F103C8T6** (`C8734`) with power/decoupling/reset/BOOT0/I2C — it resolves in
+   a manufacturable BOM and proves the verified-block pattern scales past
+   passives+EEPROM to a 48-pin IC. *Next breadth step:* a second power topology and a
+   non-I2C bus, to stress the validator beyond one seam type.
 3. **Stand up a real part-data layer (🔴).** Ingest jlcparts; back each block's YAML
    numbers with a ground-truth lookup so a wrong rating/address/footprint is *caught*,
    not trusted. Add an offline/pinned snapshot for reproducible CI builds.
@@ -172,9 +175,10 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
 
 The spike honestly de-risked the **validator** and proved a **compile-to-manufacturable-
 BOM** path — that part is real and runs. But three of the goal's four pillars are
-still largely unbuilt: the **NL interface is a keyword router with the LLM never
-invoked**, the **ground-truth part DB doesn't exist** (validation trusts hand-typed
-YAML), and the **verified-block library has no functional MCU**. The "eventually"
+still in progress: the **NL interface** now has a real, validator-gated LLM planner
+(§5 item 1) but is proven only on a tiny catalog; the **ground-truth part DB doesn't
+exist** (validation trusts hand-typed YAML); and the **verified-block library is thin**
+(now with a real MCU, but one bus type and one power topology). The "eventually"
 tail (routing → fab) and the business assumptions are untouched. None of this
 contradicts the strategy — it means the project is at *"validator proven, product not
 yet started."* The highest-leverage next move is the cheapest: wire a real model into

@@ -1,10 +1,14 @@
 id: mcu_i2c_controller
-version: 0.1.0
-function: "MCU / I2C bus controller (provides bus pull-ups)"
+version: 0.2.0
+function: "STM32F103C8T6 ARM Cortex-M3 MCU / I2C bus controller (provides bus pull-ups)"
 atopile_module: McuBlock
 tags: [mcu, controller, i2c-controller]
 
-bound_part: null                 # abstract controller for this slice (TODO: real MCU)
+bound_part:                      # real, orderable MCU (from `ato create part`)
+  lcsc: C8734
+  mpn: STM32F103C8T6
+  manufacturer: STMicroelectronics
+  footprint: LQFP-48
 
 ports:
   power:
@@ -12,9 +16,14 @@ ports:
     role: sink
     voltage: 3.3
     tolerance: 0.05
-    current_ma: 20               # typical MCU draw
+    current_ma: 50               # worst-case run current (datasheet ~50mA @ 72MHz)
   i2c:
     type: i2c
     role: controller
-    provides_pullups: true       # this block terminates the bus
+    provides_pullups: true       # this block terminates the bus (I2C1: PB6/PB7)
     pullup_ohms: 4700            # SCL/SDA pull-up value
+
+invariants:
+  - "power within 3.3V +/- 5%"
+validation:
+  checks_owned: [i2c-pullups]
