@@ -28,5 +28,9 @@ is the interface.
 - **[SPEC-NL-PLANNER.md](./SPEC-NL-PLANNER.md)** — implementation spec for the top
   gap: wiring a real Claude planner into the existing validator-gated seam, with an
   eval harness and CI.
+- **[SPEC-PARTDB.md](./SPEC-PARTDB.md)** — implementation spec for the ground-truth
+  part-data layer: a sourced, pinned component snapshot + an offline CI gate that
+  catches a wrong LCSC code / MPN / footprint / supply voltage in a block's YAML
+  (closes the GAPS §4d 🔴).
 
 > Status: early scoping / pre-build.

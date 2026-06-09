@@ -99,14 +99,25 @@ electrical leg is a placeholder.
   external/adversarial corpus, no measured false-negative rate on real buggy designs.
   The "trust layer" claim needs evidence beyond 3 hand-picked faults.
 
-### 4d. Ground-truth component DB — 🔴 (architecturally central, absent)
-- ❌ **The "ground-truth part DB" in the DESIGN architecture diagram does not exist.**
-  Validation runs against **hand-typed YAML** (voltage, tolerance, address,
-  current_ma). A typo in a block's YAML is undetectable — there is no ground truth to
-  check it against, which undercuts "validated against a ground-truth database."
-- ❌ No jlcparts ingest, no stock/price feed, no ratings DB, no provenance store.
+### 4d. Ground-truth component DB — 🟠 (layer now exists for identity + key electricals)
+- ❌ **(was 🔴)** The "ground-truth part DB" in the DESIGN architecture diagram did not
+  exist. Validation ran against **hand-typed YAML** (voltage, tolerance, address,
+  current_ma). A typo in a block's YAML was undetectable — no ground truth to check
+  it against, undercutting "validated against a ground-truth database."
 - ⚠️ Part-pick requires **network at build time** (LCSC) → non-reproducible/CI-fragile;
-  no offline cache or pinned parts snapshot.
+  the snapshot below is a step toward pinning *validation*, not yet the atopile build.
+
+> **Update (since this audit):** the ground-truth layer is now built
+> ([`SPEC-PARTDB.md`](./SPEC-PARTDB.md)). `spike/partdb.py` ingests sourced data per
+> LCSC part (EasyEDA identity + exact package + stock; LCSC parametric attributes)
+> into a pinned `spike/parts_snapshot.json` with full provenance; `spike/verify_parts.py`
+> is an **offline CI gate** that checks every block's `bound_part` + declared
+> electricals against it. **28 fields VERIFIED / 0 mismatch** across the 4 blocks, and
+> a `--selftest` proves the gate catches a bogus LCSC code, wrong MPN/footprint, an
+> LDO bound to the wrong-voltage part, an over-claimed current, and a supply outside
+> the part's rating. **Still open:** I2C `address_base` + tolerances have no source yet
+> (reported `UNVERIFIABLE`, not blessed); no price feed; the snapshot doesn't yet pin
+> the `ato build` part-pick. This is why the row drops 🔴→🟠 rather than closing.
 
 ### 4e. Layout → routing → fab export (the "eventually") — 🟠 (unstarted, but in-goal)
 - ❌ `ato build` emits a `.kicad_pcb` with components but **no placement/routing**.
@@ -153,9 +164,15 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    a manufacturable BOM and proves the verified-block pattern scales past
    passives+EEPROM to a 48-pin IC. *Next breadth step:* a second power topology and a
    non-I2C bus, to stress the validator beyond one seam type.
-3. **Stand up a real part-data layer (🔴).** Ingest jlcparts; back each block's YAML
-   numbers with a ground-truth lookup so a wrong rating/address/footprint is *caught*,
-   not trusted. Add an offline/pinned snapshot for reproducible CI builds.
+3. ✅ **DONE (mechanism) — ground-truth part-data layer** ([`SPEC-PARTDB.md`](./SPEC-PARTDB.md)).
+   `spike/partdb.py` ingests sourced data per LCSC part (EasyEDA + LCSC parametric
+   table) into a pinned `spike/parts_snapshot.json` with provenance; `spike/verify_parts.py`
+   is an **offline CI gate** that backs each block's YAML numbers with a ground-truth
+   lookup so a wrong LCSC code / MPN / footprint / output-voltage / supply-range /
+   over-claimed-current is **caught, not trusted** (28 fields verified, 6/6 injected
+   faults caught). **Still open:** `address_base`/tolerance ground truth (no source yet
+   → `UNVERIFIABLE`), price/stock feed depth, and pinning the *`ato build`* part-pick to
+   the snapshot for fully offline builds.
 4. ✅ **DONE — pin the toolchain + CI (🟡).** CI runs ngspice + the four spike
    scripts incl. the planner eval; **now also** `scripts/setup.sh`/`setup.ps1` pin
    **atopile 0.12.5 / Python 3.13** (DECISION step 1), `scripts/check_toolchain.py`
@@ -181,9 +198,10 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
 The spike honestly de-risked the **validator** and proved a **compile-to-manufacturable-
 BOM** path — that part is real and runs. But three of the goal's four pillars are
 still in progress: the **NL interface** now has a real, validator-gated LLM planner
-(§5 item 1) but is proven only on a tiny catalog; the **ground-truth part DB doesn't
-exist** (validation trusts hand-typed YAML); and the **verified-block library is thin**
-(now with a real MCU, but one bus type and one power topology). The "eventually"
+(§5 item 1) but is proven only on a tiny catalog; the **ground-truth part DB now
+exists** for identity + the key electrical numbers, with an offline CI gate (§5 item
+3), though address/tolerance ground truth is still absent; and the **verified-block
+library is thin** (now with a real MCU, but one bus type and one power topology). The "eventually"
 tail (routing → fab) and the business assumptions are untouched. None of this
 contradicts the strategy — it means the project is at *"validator proven, product not
 yet started."* The highest-leverage next move is the cheapest: wire a real model into
