@@ -21,6 +21,8 @@ jobs:
       - name: Validator + contract + orchestrator + planner eval
         working-directory: spike
         run: |
+          python3 place.py --selftest    # pure placement, against committed fixture
+          python3 route.py --selftest    # pure output parsers, against committed fixtures
           python3 seam_validator.py
           python3 block_contract.py --faults
           python3 validator_corpus.py    # adversarial corpus; gates on covered-fault regressions
@@ -49,3 +51,54 @@ jobs:
         # Proves the documented setup actually resolves atopile==0.12.5 on Python 3.13
         # (and runs the offline consistency gate at the end). ngspice is optional here.
         run: bash scripts/setup.sh
+
+  route:
+    name: Autoroute → routed copper (verified board)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Install pinned atopile toolchain
+        run: bash scripts/setup.sh
+      - name: Install spike Python deps (route.py → fab_export needs pyyaml)
+        run: pip install -r spike/requirements.txt
+      - name: Install KiCad 9 (kicad-cli + pcbnew)
+        # Pinned KiCad 9 for the Specctra round-trip (pcbnew), DRC + Gerber export.
+        # Pin linted by scripts/check_toolchain.py against KICAD_VERSION.
+        run: |
+          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends kicad
+          kicad-cli version
+      - name: Install Java 21 (freerouting 2.1.0 needs class-file 65 / JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Fetch pinned freerouting
+        run: |
+          curl -fL -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v2.1.0/freerouting-2.1.0.jar"
+          java -jar freerouting.jar --help 2>&1 | head -40 || true
+      - name: ato build verified (reproducible — 3D models committed)
+        # Board = verified_slice.ato:App (real AMS1117 LDO C6186 + AT24C256 EEPROM C6482
+        # + decoupling + I2C pull-ups). The per-part 3D models are committed under
+        # elec/src/parts/**, so this build is reproducible with no network model fetch
+        # (only the LCSC part-pick hits the network). Produces the unrouted .kicad_pcb
+        # the routing pipeline (Task 4) consumes.
+        working-directory: spike/atopile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ato build -b verified
+          echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Route the board (place → DSN → freerouting → SES → DRC → Gerbers)
+        # HARD GATE: route.py exits nonzero unless 0 unrouted nets + 0 DRC violations
+        # + all required copper layers exported. python3 here is the 3.13 venv; it shells
+        # to /usr/bin/python3 for pcbnew (Specctra), java for freerouting, kicad-cli.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/verified/verified.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route

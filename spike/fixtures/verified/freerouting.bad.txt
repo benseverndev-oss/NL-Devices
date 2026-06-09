@@ -1,0 +1,5 @@
+INFO   Freerouting v2.1.0 (build-date: 2025-04-12)
+INFO   Settings were loaded from freerouting.json
+INFO   Auto-router pass #1 was completed in 0.76 seconds with the score of 903.51 (5 unrouted).
+INFO   Auto-router pass #2 was completed in 0.21 seconds with the score of 941.46 (3 unrouted).
+    "incomplete_count": 3

@@ -1,0 +1,8 @@
+verified-F_Cu.gbr
+verified-B_Cu.gbr
+verified-F_Mask.gbr
+verified-B_Mask.gbr
+verified-F_Silkscreen.gbr
+verified-B_Silkscreen.gbr
+verified-Edge_Cuts.gbr
+verified.drl

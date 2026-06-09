@@ -138,17 +138,26 @@ electrical leg is a placeholder.
 > (reported `UNVERIFIABLE`, not blessed); no price feed; the snapshot doesn't yet pin
 > the `ato build` part-pick. This is why the row drops 🔴→🟠 rather than closing.
 
-### 4e. Layout → routing → fab export (the "eventually") — 🟠 (export path spiked; routing still the blocker)
-- ❌ `ato build` emits a `.kicad_pcb` with components but **no placement/routing** — still
-  the load-bearing gap.
-- ❌ No autorouter integration (DESIGN says *complement* Quilter — no integration).
-- ✅ **One fab-export path now spiked** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)):
-  `spike/fab_export.py` builds a JLCPCB package — real-LCSC **BOM**, **CPL** (placed by
-  real part body sizes), a format-valid **Edge.Cuts Gerber** + **Excellon drill**, and a
-  **validated, dry-run** assembly-order payload (reuses the `verify_parts` snapshot, so a
-  board can't ship with an unverified part). **Copper layers are intentionally not
-  emitted** — routing is upstream; this proves the packaging + order mechanics, not a
-  routed board.
+### 4e. Layout → routing → fab export (the "eventually") — 🟢 (routed + DRC-clean copper now exported)
+- ✅ **The routing 🔴 is closed for the `verified` board** ([`SPEC-ROUTING.md`](./SPEC-ROUTING.md)).
+  `ato build` → `spike/place.py` (courtyard-safe placement + board outline) →
+  `pcbnew.ExportSpecctraDSN` → **headless freerouting** → `pcbnew.ImportSpecctraSES` →
+  `kicad-cli pcb drc` → `kicad-cli` Gerber/drill export, run in CI on every push and
+  **hard-gated: 0 unrouted nets + 0 DRC violations + format-valid copper layers**. The
+  routed board (AMS1117 LDO + AT24C256 EEPROM + I2C, 7 footprints, 5 nets) produces real
+  F.Cu/B.Cu/Edge.Cuts Gerbers + drill — no longer a placeholder.
+- ✅ **Reference autorouter integrated** (freerouting), behind a Specctra `.dsn`/`.ses`
+  seam where a production router (Quilter) swaps in — this is the DESIGN §4 reversal
+  (AVOID → qualified BUILD).
+- ✅ **Fab-export now carries real copper** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md) +
+  `fab_export.build_routed_package`): the JLCPCB package's **BOM + CPL come from the routed
+  board** (single source of truth) alongside the real `kicad-cli` Gerbers/drill; the
+  bound ICs reconcile to the `verify_parts` snapshot (U1 AMS1117, U2 EEPROM) while
+  atopile-picked passives are reported, not blessed.
+- ⚠️ **Honest scope:** one board, one vertical, 2 layers; deterministic (not DFM-optimal)
+  placement; `ato build`'s LCSC part-pick still hits the network (isolated in the `route`
+  job). The original dry-run order path ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)) still
+  never submits.
 
 ### 4f. Product / delivery — 🟡
 - ❌ No UI, API service, persistence, accounts, or project/versioning — it's a set of
@@ -218,13 +227,17 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    and whose `--selftest` cross-checks the analytic `0.8473·R·C` limit to <5% (run live
    in CI). **Still open:** wire the proven droop sim into the gate (needs per-rail
    decoupling-cap data) and a load/thermal-dependent behavioural LDO model.
-7. ✅ **DONE (spike) — one fab-export path** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)).
-   `spike/fab_export.py` emits a JLCPCB package (real-LCSC BOM + CPL + format-valid
-   Edge.Cuts Gerber + Excellon drill) and a **validated, dry-run** assembly-order payload
-   (never submits). `--selftest` builds the sensor_node board (3 parts → 32×32mm),
-   validates clean, and rejects a bogus-LCSC package. **Still open (the real blocker):**
-   routing — copper layers aren't emitted; wiring `ato build`'s `.kicad_pcb` + an
-   autorouter + `kicad-cli` Gerber export is what makes the copper real.
+7. ✅ **DONE — fab-export path + the routing blocker closed** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)
+   then [`SPEC-ROUTING.md`](./SPEC-ROUTING.md)). The original spike emitted a JLCPCB package
+   (real-LCSC BOM + CPL + format-valid Edge.Cuts Gerber + Excellon drill) + a **validated,
+   dry-run** assembly-order payload (never submits). **The "real blocker" — routing — is now
+   closed for the `verified` board:** a CI-gated pipeline (`place.py` + `route.py` +
+   `kicad_specctra.py`) drives `ato build` → place → headless **freerouting** → DRC →
+   `kicad-cli` Gerbers, **hard-gated on 0 unrouted + 0 DRC + format-valid copper**, and
+   `fab_export.build_routed_package` folds the real copper + routed CPL into the package
+   (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). **Still open:** one
+   board / one vertical / 2 layers, deterministic (not DFM) placement, network part-pick at
+   build, and the STM32 block isn't yet in a build target (a fuller board is a follow-up).
 8. **Run the cheapest business test (🟠):** 5–10 customer-discovery calls on respin
    WTP and one fab partner conversation on wholesale margin — the two unproven
    assumptions the whole revenue model rests on.

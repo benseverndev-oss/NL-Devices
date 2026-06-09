@@ -42,5 +42,9 @@ is the interface.
 - **[SPEC-FAB-EXPORT.md](./SPEC-FAB-EXPORT.md)** — spiking one fab path: a JLCPCB
   package (real-LCSC BOM + CPL + format-valid Gerber/drill) and a validated **dry-run**
   order, honest that copper routing is still the upstream blocker (GAPS §4e/§5.7).
+- **[SPEC-ROUTING.md](./SPEC-ROUTING.md)** — owning the autoroute: a CI-gated pipeline
+  (`place.py` + headless **freerouting** + `kicad-cli`) that turns the `ato build` board
+  into **routed, DRC-clean copper Gerbers**, folded back into the fab package. Closes the
+  GAPS §4e routing 🔴 and reverses the DESIGN §4 autoroute decision (AVOID → qualified BUILD).
 
 > Status: early scoping / pre-build.

@@ -105,13 +105,14 @@ deterministic and own correctness.
 | **Verified building-block library** (typed subcircuits + port contracts) | The moat thesis — but the *least proven* leg; de-risk early |
 | **Seam / electrical-rule validator** | **No permissive standalone ERC engine exists** (KiCad's is GPLv3). Building one is necessary *and* defensible |
 | **Datasheet → structured-data extraction pipeline** | No licensable shortcut for parametric/pinout data without redistribution limits; SOTA ~86% extraction → human-in-the-loop review |
+| **Reference autoroute → routed copper → fab Gerbers** (qualified) | Closes the "routed PCB → fab" 🔴 for the vertical. We own only a *reference* path (freerouting, headless) behind a thin Specctra `.dsn`/`.ses` seam — a production router (Quilter) swaps in at that exact boundary. *Reversed from AVOID, [`SPEC-ROUTING.md`](./SPEC-ROUTING.md).* |
 
 ### ⛔ AVOID
 | What | Why |
 |---|---|
 | Building a parts DB from **Digi-Key / Mouser APIs** | ToS *forbid* "creating your own database" + delete-on-termination. Use only as live display/pricing feeds |
 | Competing on raw **NL chat / generation** | Commoditizing; even insiders say it's not the moat |
-| **Autorouting** (for now) | Quilter / Cadence Allegro X AI / Freerouting own it. **Complement** them — feed Quilter our validated netlist |
+| ~~**Autorouting**~~ → **moved to BUILD (qualified)** | *Decision reversed.* Originally "complement Quilter, don't build." Now we own a **reference** freerouting path ([`SPEC-ROUTING.md`](./SPEC-ROUTING.md)) to make "routed PCB → fab" real for one vertical — the 🔴 that blocked the ultimate goal. We are **not** competing with Quilter/Cadence on routing quality at scale; the `.dsn`/`.ses` export is a seam where a production router plugs in. "Complement, don't fight at scale" still holds — we just stopped having *zero* routing. |
 | Building our own **DSL** | atopile/tscircuit/SKiDL already exist under MIT |
 
 ---

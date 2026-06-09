@@ -238,6 +238,91 @@ def build_jlcpcb_order(pkg: Package, *, qty: int = 5, layers: int = 2) -> dict:
     }
 
 
+# ---- routed package: real copper from the routed board (SPEC-ROUTING.md §5) ----
+def _parse_routed_board(text: str) -> list[dict]:
+    """Pull per-footprint BOM+placement out of a routed .kicad_pcb. The routed board
+    is the single source of truth for both BOM and CPL (replacing the slice-derived
+    placeholder). Each dict: ref, lcsc, value, footprint, x, y, rot, layer."""
+    import place
+    out = []
+    for s, e in place._iter_footprint_blocks(text):
+        b = text[s:e]
+        def grab(pat, d=""):
+            m = re.search(pat, b)
+            return m.group(1) if m else d
+        at = re.search(r"\(at (-?[\d.]+) (-?[\d.]+)(?: (-?[\d.]+))?\)", b)
+        out.append({
+            "ref": grab(r'\(property "Reference" "([^"]+)"'),
+            "lcsc": grab(r'\(property "LCSC" "([^"]+)"'),
+            "value": grab(r'\(property "Value" "([^"]+)"'),
+            "footprint": grab(r'\(footprint "([^"]+)"').split(":")[-1],
+            "x": float(at.group(1)) if at else 0.0,
+            "y": float(at.group(2)) if at else 0.0,
+            "rot": float(at.group(3)) if (at and at.group(3)) else 0.0,
+            "layer": "bottom" if re.search(r'\(layer "B\.Cu"\)', b) else "top",
+        })
+    return out
+
+
+def build_routed_package(routed_pcb: Path, gerbers_dir: Path, snapshot: dict,
+                         outdir: Path, name: str = "verified") -> dict:
+    """Assemble a JLCPCB package around the REAL routed board + kicad-cli Gerbers.
+    BOM + CPL both come from the routed board; the copper/drill are the real exported
+    files (no hand-rolled outline). Returns the package descriptor."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    parts = _parse_routed_board(routed_pcb.read_text(encoding="utf-8"))
+
+    bom = outdir / f"{name}-bom.csv"
+    with bom.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
+        for p in parts:
+            w.writerow([p["value"], p["ref"], p["footprint"], p["lcsc"]])
+
+    cpl = outdir / f"{name}-cpl.csv"
+    with cpl.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
+        for p in parts:
+            w.writerow([p["ref"], f'{p["x"]:.3f}mm', f'{p["y"]:.3f}mm', p["layer"], p["rot"]])
+
+    gdir = outdir / "gerbers"
+    gdir.mkdir(exist_ok=True)
+    copied = []
+    for g in sorted(p for p in gerbers_dir.iterdir() if p.is_file()):
+        (gdir / g.name).write_bytes(g.read_bytes())
+        copied.append(g.name)
+
+    return {"name": name, "parts": parts, "bom": bom, "cpl": cpl,
+            "gerbers": copied, "gerbers_dir": gdir}
+
+
+def validate_routed_package(pkg: dict, snapshot: dict) -> list[str]:
+    """Gate the routed package: required copper layers present, no blank LCSC, no
+    duplicate designators. Un-snapshotted passives (atopile-picked) are reported, not
+    blessed (SPEC-ROUTING.md §5) — the snapshot does not pin the build's part-pick."""
+    import route
+    problems = []
+    layers = route.gerber_layers_present(pkg["gerbers"])
+    missing = route.REQUIRED_LAYERS - layers
+    if missing:
+        problems.append(f"missing copper layers {sorted(missing)} (have {sorted(layers)})")
+
+    refs = [p["ref"] for p in pkg["parts"]]
+    if len(refs) != len(set(refs)):
+        problems.append(f"duplicate designators in {refs}")
+    blank = [p["ref"] for p in pkg["parts"] if not p["lcsc"]]
+    if blank:
+        problems.append(f"parts with no LCSC code: {blank}")
+
+    verified = [p["ref"] for p in pkg["parts"] if p["lcsc"] in snapshot]
+    unsnap = [f'{p["ref"]}={p["lcsc"]}' for p in pkg["parts"]
+              if p["lcsc"] and p["lcsc"] not in snapshot]
+    print(f"  BOM: {len(pkg['parts'])} parts, {len(verified)} ground-truth-verified "
+          f"({sorted(verified)}); un-snapshotted (atopile-picked, reported not blessed): {unsnap}")
+    return problems
+
+
 # ---- self-test ----------------------------------------------------------------
 def selftest() -> bool:
     blocks = block_contract.load_blocks()
