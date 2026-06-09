@@ -23,3 +23,8 @@ jobs:
           python3 block_contract.py --faults
           python3 orchestrator.py
           python3 eval_planner.py        # offline FakeModel; gates on 0-hallucination
+      - name: Ground-truth part-data gate (offline, no network)
+        working-directory: spike
+        run: |
+          python3 verify_parts.py            # every bound block vs pinned snapshot
+          python3 verify_parts.py --selftest # injected part-data faults must be caught

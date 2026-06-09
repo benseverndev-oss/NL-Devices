@@ -1,0 +1,282 @@
+{
+  "schema_version": "1.0",
+  "source": "easyeda+lcsc",
+  "generated_by": "partdb.py ingest",
+  "generated_at": "2026-06-09",
+  "note": "Ground-truth part data. Regenerate with `python3 partdb.py ingest --from-blocks`. verify_parts.py checks blocks against this offline.",
+  "parts": {
+    "C477979": {
+      "lcsc": "C477979",
+      "mpn": "LM75AIMX/NOPB",
+      "manufacturer": "TI",
+      "package": "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL",
+      "jlcpcb_class": "Extended Part",
+      "stock": 743,
+      "lcsc_url": "https://www.lcsc.com/product-detail/C477979.html",
+      "easyeda_uuid": "9167438011d54822b61d206608403ddd",
+      "attributes": {
+        "operating_voltage_v": {
+          "min": 2.7,
+          "max": 5.5,
+          "raw": "2.7V~5.5V"
+        },
+        "interface": [
+          "I2C"
+        ],
+        "standby_current_ma": {
+          "value_ma": 0.5,
+          "raw": "500uA"
+        }
+      },
+      "raw_attributes": [
+        [
+          "检测温度",
+          "-55℃~+125℃"
+        ],
+        [
+          "工作电压",
+          "2.7V~5.5V"
+        ],
+        [
+          "工作温度",
+          "-"
+        ],
+        [
+          "精度",
+          "±2℃"
+        ],
+        [
+          "接口类型",
+          "I2C"
+        ],
+        [
+          "待机电流",
+          "500uA"
+        ],
+        [
+          "温度转换时间",
+          "300ms"
+        ],
+        [
+          "温度分辨率",
+          "9bit"
+        ],
+        [
+          "功能特性",
+          "Low-power standby;Temperature threshold monitoring;Hardware comparator / independent temperature control output;On-chip digital filtering/averaging"
+        ]
+      ],
+      "fetched_at": "2026-06-09",
+      "sources": [
+        "easyeda:components",
+        "lcsc:__NEXT_DATA__"
+      ]
+    },
+    "C6186": {
+      "lcsc": "C6186",
+      "mpn": "AMS1117-3.3",
+      "manufacturer": "Advanced Monolithic Systems",
+      "package": "SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR",
+      "jlcpcb_class": "Basic Part",
+      "stock": 113340,
+      "lcsc_url": "https://www.lcsc.com/product-detail/C6186.html",
+      "easyeda_uuid": "588dac9f81df8f83843513972963b454",
+      "attributes": {
+        "output_voltage_v": {
+          "min": null,
+          "max": 3.3,
+          "value": 3.3,
+          "raw": "3.3V"
+        },
+        "quiescent_current_ma": {
+          "value_ma": 5.0,
+          "raw": "5mA"
+        },
+        "operating_voltage_v": {
+          "min": null,
+          "max": 15.0,
+          "value": 15.0,
+          "raw": "15V"
+        },
+        "output_current_ma": {
+          "value_ma": 1000.0,
+          "raw": "1A"
+        }
+      },
+      "raw_attributes": [
+        [
+          "输出电压",
+          "3.3V"
+        ],
+        [
+          "输出通道数",
+          "1"
+        ],
+        [
+          "工作温度",
+          "-40℃~+125℃"
+        ],
+        [
+          "静态电流(Iq)",
+          "5mA"
+        ],
+        [
+          "输出极性",
+          "Positive"
+        ],
+        [
+          "工作电压",
+          "15V"
+        ],
+        [
+          "输出电流",
+          "1A"
+        ],
+        [
+          "输出类型",
+          "Fixed"
+        ],
+        [
+          "功能特性",
+          "Short Circuit Protection;Thermal shutdown;Over Current Protection"
+        ]
+      ],
+      "fetched_at": "2026-06-09",
+      "sources": [
+        "easyeda:components",
+        "lcsc:__NEXT_DATA__"
+      ]
+    },
+    "C6482": {
+      "lcsc": "C6482",
+      "mpn": "AT24C256C-SSHL-T",
+      "manufacturer": "MICROCHIP",
+      "package": "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL",
+      "jlcpcb_class": "Extended Part",
+      "stock": 28366,
+      "lcsc_url": "https://www.lcsc.com/product-detail/C6482.html",
+      "easyeda_uuid": "f7800b06fad547b69b5f810ffb917a8c",
+      "attributes": {
+        "operating_voltage_v": {
+          "min": 1.7,
+          "max": 5.5,
+          "raw": "1.7V~5.5V"
+        },
+        "interface": [
+          "I2C"
+        ]
+      },
+      "raw_attributes": [
+        [
+          "工作电压",
+          "1.7V~5.5V"
+        ],
+        [
+          "存储容量",
+          "256Kbit"
+        ],
+        [
+          "工作温度",
+          "-40℃~+85℃"
+        ],
+        [
+          "时钟频率(fc)",
+          "1MHz"
+        ],
+        [
+          "功能特性",
+          "Hardware write protection function;Noise suppression function"
+        ],
+        [
+          "数据保留 - TDR(年)",
+          "40 Years"
+        ],
+        [
+          "写周期时间(Tw)",
+          "5ms"
+        ],
+        [
+          "写周期寿命",
+          "1,000,000 cycles"
+        ],
+        [
+          "接口类型",
+          "I2C"
+        ]
+      ],
+      "fetched_at": "2026-06-09",
+      "sources": [
+        "easyeda:components",
+        "lcsc:__NEXT_DATA__"
+      ]
+    },
+    "C8734": {
+      "lcsc": "C8734",
+      "mpn": "STM32F103C8T6",
+      "manufacturer": "ST",
+      "package": "LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL",
+      "jlcpcb_class": "Extended Part",
+      "stock": 20212,
+      "lcsc_url": "https://www.lcsc.com/product-detail/C8734.html",
+      "easyeda_uuid": "7347be22b5856eba3ffccb74c7404572",
+      "attributes": {
+        "operating_voltage_v": {
+          "min": 2.0,
+          "max": 3.6,
+          "raw": "2V~3.6V"
+        }
+      },
+      "raw_attributes": [
+        [
+          "ADC(位数)",
+          "12bit"
+        ],
+        [
+          "工作温度",
+          "-40℃~+85℃"
+        ],
+        [
+          "工作电压",
+          "2V~3.6V"
+        ],
+        [
+          "程序存储器类型",
+          "FLASH"
+        ],
+        [
+          "EEPROM容量",
+          "-"
+        ],
+        [
+          "程序存储容量",
+          "64KB"
+        ],
+        [
+          "CPU内核",
+          "ARM Cortex-M3"
+        ],
+        [
+          "CPU位数",
+          "32 Bit"
+        ],
+        [
+          "CPU最大主频",
+          "72MHz"
+        ],
+        [
+          "振荡器类型",
+          "Built-in"
+        ],
+        [
+          "I/O数量",
+          "37"
+        ]
+      ],
+      "fetched_at": "2026-06-09",
+      "sources": [
+        "easyeda:components",
+        "lcsc:__NEXT_DATA__"
+      ]
+    }
+  }
+}
