@@ -12,6 +12,10 @@ It checks the three SPIKE.md §4 seams:
   2. I2C pull-ups present          (some participant must pull SCL/SDA up)
   3. I2C address uniqueness        (no two peripherals share an address)
 
+plus the deeper validator-depth checks (GAPS §4c): current-budget, i2c-reserved-addr,
+i2c-bus-timing, part-rail-rating (ground-truth join), power-connectivity (every active
+device is on a rail), and i2c-multimaster (one controller per bus).
+
 Run:  python3 seam_validator.py
 """
 from __future__ import annotations
@@ -201,13 +205,44 @@ def check_part_rail_rating(d: Design) -> list[str]:
     return errs
 
 
+def check_power_connectivity(d: Design) -> list[str]:
+    """Every active device must be powered by some rail. The model's active devices are
+    the I2C bus participants; each must appear as a sink on at least one rail. Catches a
+    block composed onto a bus but never wired to power — it would float / be unpowered,
+    and every other check (which only reasons about the rails/buses a block IS on) sails
+    right past it. A measured false negative until this check existed (GAPS §4c)."""
+    errs = []
+    powered = {block for r in d.rails for (block, _v, _tol) in r.sinks}
+    for b in d.buses:
+        for n in b.nodes:
+            if n.block not in powered:
+                errs.append(f"POWER: device '{n.block}' on bus '{b.name}' is not "
+                            f"connected to any power rail (floating / unpowered)")
+    return errs
+
+
+def check_i2c_multimaster(d: Design) -> list[str]:
+    """Classic I2C is single-controller. Two controllers on one bus need multi-master
+    arbitration (clock sync + bus-busy detection) that simply composing blocks does not
+    provide, so flag it. A measured false negative until this check existed (GAPS §4c)."""
+    errs = []
+    for b in d.buses:
+        controllers = [n.block for n in b.nodes if n.role == "controller"]
+        if len(controllers) > 1:
+            errs.append(f"I2C: bus '{b.name}' has {len(controllers)} controllers "
+                        f"({', '.join(controllers)}) — multi-master arbitration not modelled")
+    return errs
+
+
 CHECKS = [("power-domain", check_power_domains),
           ("i2c-pullups", check_i2c_pullups),
           ("i2c-address", check_i2c_addresses),
           ("current-budget", check_current_budget),
           ("i2c-reserved-addr", check_i2c_reserved_addresses),
           ("i2c-bus-timing", check_i2c_bus_capacitance),
-          ("part-rail-rating", check_part_rail_rating)]
+          ("part-rail-rating", check_part_rail_rating),
+          ("power-connectivity", check_power_connectivity),
+          ("i2c-multimaster", check_i2c_multimaster)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:

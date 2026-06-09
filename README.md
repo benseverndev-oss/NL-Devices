@@ -33,9 +33,10 @@ is the interface.
   catches a wrong LCSC code / MPN / footprint / supply voltage in a block's YAML
   (closes the GAPS §4d 🔴).
 - **[SPEC-VALIDATOR-DEPTH.md](./SPEC-VALIDATOR-DEPTH.md)** — deepening the validator
-  (3→7 checks, incl. `part-rail-rating` joining it to the part DB) and an adversarial
-  corpus that **measures the false-negative rate** (down 33% → 22% over known-bad
-  designs), with the remaining gaps named as the roadmap (GAPS §4c).
+  (3→9 checks, incl. `part-rail-rating` joining it to the part DB, plus
+  `power-connectivity` + `i2c-multimaster`) and an adversarial corpus that **measures
+  the false-negative rate** (walked 33% → 22% → 0% over the representable known-bad
+  designs), with the remaining `NOT_MODELLED` gaps named as the roadmap (GAPS §4c).
 - **[SPEC-SPICE.md](./SPEC-SPICE.md)** — replacing the "Ohm's-law-in-a-SPICE-costume"
   electrical gate with an honest analytic dropout check + **genuine ngspice `.tran`
   sims** (I2C rise time, rail droop) that cross-check the analytic limit (GAPS §3/§5.6).

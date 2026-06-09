@@ -177,8 +177,10 @@ def inject_faults(design: sv.Design) -> list[tuple[str, sv.Design, str]]:
     for n in d.buses[0].nodes:
         n.provides_pullups = False
     out.append(("fault: no I2C pull-ups", d, "i2c-pullups"))
-    # 3. address collision: a second peripheral at the same address
+    # 3. address collision: a second peripheral at the same address (powered from the
+    #    3V3 rail so ONLY the address fault is under test, not power-connectivity)
     d = copy.deepcopy(design)
+    next(r for r in d.rails if r.name == "3V3").sinks.append(("sensor_b", 3.3, 0.05))
     d.buses[0].nodes.append(sv.I2CNode("sensor_b", "peripheral", address=0x50))
     out.append(("fault: duplicate I2C address", d, "i2c-address"))
     return out

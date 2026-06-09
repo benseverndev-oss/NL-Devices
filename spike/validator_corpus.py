@@ -14,10 +14,12 @@ This harness answers that with a number. It runs a labelled corpus through
                     EXPECT it to slip through; that is a measured false NEGATIVE. These
                     do not fail CI — they are the honest roadmap of what's left to build.
 
-The point is the `bad_uncovered` set: it deliberately includes faults *outside* the
-three the validator was built around, so the reported false-negative rate is real and
-not self-congratulatory. CI gates on regressions (good FP / covered miss); the FN
-inventory is published, not hidden.
+The `bad_uncovered` set is the honest part: faults chosen *because* no current check
+saw them, so the reported false-negative rate is real and not self-congratulatory. As
+checks are built, entries graduate to `bad_covered` (this is how `part-rail-rating`,
+then `i2c-multimaster` + `power-connectivity` landed). What remains uncovered is now in
+`NOT_MODELLED` — faults today's data model can't even express. CI gates on regressions
+(good FP / covered miss); the FN inventory is published, not hidden.
 
 Run:  python3 validator_corpus.py
 """
@@ -75,6 +77,7 @@ def _bad_no_pullups() -> sv.Design:
 
 def _bad_addr_collision() -> sv.Design:
     d = good_baseline(); d.name = "bad_addr_collision"
+    d.rails[1].sinks.append(("sensor_b", 3.3, 0.05))   # powered: isolate the address fault
     d.buses[0].nodes.append(sv.I2CNode("sensor_b", "peripheral", address=0x50))
     return d
 
@@ -98,17 +101,20 @@ def _bad_bus_timing() -> sv.Design:
     return d
 
 
-# -- known-bad designs the gate currently CANNOT see (measured false negatives) --
-def _uncov_multimaster() -> sv.Design:
-    d = good_baseline(); d.name = "uncov_multimaster"
+def _bad_multimaster() -> sv.Design:
+    d = good_baseline(); d.name = "bad_multimaster"
+    # a second controller on the bus, powered (so ONLY the multi-master fault is under
+    # test, not power-connectivity). Caught by check_i2c_multimaster.
+    d.rails[1].sinks.append(("mcu2", 3.3, 0.05))
     d.buses[0].nodes.append(sv.I2CNode("mcu2", "controller", provides_pullups=False))
     return d
 
 
-def _uncov_floating_power() -> sv.Design:
-    d = good_baseline(); d.name = "uncov_floating_power"
-    # an active device on the bus that no rail powers — the gate has no
-    # "every block must be on a rail" connectivity check, so it sails through.
+def _bad_floating_power() -> sv.Design:
+    d = good_baseline(); d.name = "bad_floating_power"
+    # an active device on the bus that no rail powers. Every other check only reasons
+    # about the rails/buses a block IS on, so it sailed through until check_power_
+    # connectivity asserted "every active device is on a rail".
     d.buses[0].nodes.append(sv.I2CNode("orphan", "peripheral", address=0x51))
     return d
 
@@ -137,11 +143,11 @@ CORPUS = [
     {"build": _bad_reserved_address,"kind": "bad_covered","expect": {"i2c-reserved-addr"}, "note": "address 0x7A reserved"},
     {"build": _bad_bus_timing,     "kind": "bad_covered", "expect": {"i2c-bus-timing"},    "note": "47kΩ pull-up @400kHz"},
     {"build": _bad_part_rail_rating,"kind": "bad_covered","expect": {"part-rail-rating"},  "note": "5V-only part on the 3.3V rail (vs ground truth)"},
-    # bad, UNCOVERED (measured false negatives — the honest roadmap)
-    {"build": _uncov_multimaster,  "kind": "bad_uncovered", "missing": "i2c-multimaster",
-     "note": "two controllers on one bus — no multi-master check"},
-    {"build": _uncov_floating_power,"kind": "bad_uncovered", "missing": "power-connectivity",
-     "note": "active device on no rail — no 'every block powered' check"},
+    {"build": _bad_multimaster,    "kind": "bad_covered", "expect": {"i2c-multimaster"},   "note": "two controllers on one bus"},
+    {"build": _bad_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},"note": "active device powered by no rail"},
+    # bad, UNCOVERED (measured false negatives — the honest roadmap). Both representable
+    # FNs (i2c-multimaster, power-connectivity) are now built and reclassified above; the
+    # remaining honest gaps are in NOT_MODELLED (not expressible in today's data model).
 ]
 
 # Faults not even representable in today's model — listed so the roadmap is complete.
@@ -206,9 +212,12 @@ def run() -> bool:
     print(f"measured false-negative rate (of all {total_bad} known-bad designs): "
           f"{unc_fn}/{total_bad} = {fn_rate:.0%}")
     print("\nmeasured false negatives (representable, the next checks to build):")
-    for e in CORPUS:
-        if e["kind"] == "bad_uncovered":
+    representable_fns = [e for e in CORPUS if e["kind"] == "bad_uncovered"]
+    if representable_fns:
+        for e in representable_fns:
             print(f"  · {e['missing']:<26} — {e['note']}")
+    else:
+        print("  · (none — every representable known-bad fault now has a check)")
     print("not modelled at all (further out on the roadmap):")
     for m in NOT_MODELLED:
         print(f"  · {m}")

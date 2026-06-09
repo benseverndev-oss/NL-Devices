@@ -94,29 +94,35 @@ electrical leg is a placeholder.
   in DESIGN §4; blocks were hand-authored via `ato create part` + hand-typed YAML. No
   extraction, no provenance, no human-in-the-loop review tooling.
 
-### 4c. Validation engine depth — 🟠 (deepened 3→6 checks; FN rate now measured)
-- ⚠️ Was 3 topological + 2 toy-electrical checks; **now 6 checks** — added
-  `current-budget`, `i2c-reserved-addr`, and `i2c-bus-timing` (RC rise-time + bus
-  capacitance), fed real data via `block_contract.build_design`.
+### 4c. Validation engine depth — 🟠 (deepened 3→9 checks; representable FN rate now 0)
+- ⚠️ Was 3 topological + 2 toy-electrical checks; **now 9 checks** — added
+  `current-budget`, `i2c-reserved-addr`, `i2c-bus-timing` (RC rise-time + bus
+  capacitance), `part-rail-rating` (ground-truth join), `power-connectivity` (every
+  active device sits on a rail), and `i2c-multimaster` (one controller per bus), fed
+  real data via `block_contract.build_design`.
 - ❌ Still no pin-level ERC on the *composed* design (SKiDL ERC never wired into the gate).
-- ⚠️ Still no decoupling adequacy, abs-max/reverse-polarity, thermal, or
-  design-level part-rating checks — but these are now **enumerated and measured** as
-  false negatives rather than unknown (see below).
+- ⚠️ Still no decoupling adequacy, abs-max/reverse-polarity, or thermal checks — but
+  these are **enumerated** as `NOT_MODELLED` (not expressible in today's data model)
+  rather than unknown (see below).
 - ✅ **Validator now adversarially tested with a measured false-negative rate.**
 
 > **Update (since this audit):** [`SPEC-VALIDATOR-DEPTH.md`](./SPEC-VALIDATOR-DEPTH.md).
-> `spike/validator_corpus.py` runs a labelled corpus through the gate: **7/7 covered
-> faults caught, 0 false positives, and a published 2/9 = 22% false-negative rate**
-> over all known-bad designs. CI gates on covered-fault regressions only, so the FN
-> inventory is surfaced without making CI red for known gaps.
+> `spike/validator_corpus.py` runs a labelled corpus through the gate: **9/9 covered
+> faults caught, 0 false positives, and a published 0/9 = 0% false-negative rate** over
+> all *representable* known-bad designs. CI gates on covered-fault regressions only, so
+> the FN inventory is surfaced without making CI red for known gaps.
 >
-> **Post-roadmap:** the headline FN — `part-rail-rating` — is now **built**: it joins
-> the validator to the part DB, looking up each sink's ground-truth datasheet operating
-> range (via `block_contract.build_design(..., snapshot)`) and checking the rail voltage
-> the part *actually sees* against it (the orchestrator gate is now ground-truth-aware).
-> That dropped the FN rate 33% → 22%. **Still open:** the corpus is internal (not
-> field-captured third-party), and two FNs remain — `i2c-multimaster` and
-> `power-connectivity`.
+> **Post-roadmap:** all three representable FNs are now **built** and graduated from
+> `bad_uncovered` to `bad_covered`, walking the FN rate 33% → 22% → 0%:
+> `part-rail-rating` (joins the gate to the part DB — looks up each sink's ground-truth
+> datasheet operating range via `build_design(..., snapshot)` and checks the rail the
+> part *actually sees*; the orchestrator gate is now ground-truth-aware),
+> `i2c-multimaster` (two controllers on one bus need arbitration the composition doesn't
+> provide), and `power-connectivity` (an active device wired to no rail floats — every
+> other check only reasons about the rails a block IS on, so it slipped past). **Still
+> open:** 0% is over the *representable* corpus only — the honest frontier is the
+> `NOT_MODELLED` list (decoupling, abs-max, pin-level ERC, thermal, bus-speed-vs-slowest)
+> and a field-captured third-party corpus, which would likely push the rate back up.
 
 ### 4d. Ground-truth component DB — 🟠 (layer now exists for identity + key electricals)
 - ❌ **(was 🔴)** The "ground-truth part DB" in the DESIGN architecture diagram did not
@@ -213,13 +219,15 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    lints pin-consistency offline, and a `toolchain` CI job proves the pinned install
    resolves. *Still open:* a single root deps lockfile / hard-locked `pyyaml`.
 5. ✅ **DONE — deepened + adversarially tested the validator** ([`SPEC-VALIDATOR-DEPTH.md`](./SPEC-VALIDATOR-DEPTH.md)).
-   Checks 3→**7** (`current-budget`, `i2c-reserved-addr`, `i2c-bus-timing`, and
-   post-roadmap `part-rail-rating`); `spike/validator_corpus.py` **measures the
-   false-negative rate: 7/7 covered faults caught, 0 false positives, 2/9 = 22% FN**
-   (down from 33% once `part-rail-rating` joined the validator to `verify_parts` — the
-   orchestrator gate is now ground-truth-aware). CI gates on covered-fault regressions.
-   **Still open:** a *third-party* (field-captured) corpus, and two remaining FNs
-   (`i2c-multimaster`, `power-connectivity`).
+   Checks 3→**9** (`current-budget`, `i2c-reserved-addr`, `i2c-bus-timing`, and
+   post-roadmap `part-rail-rating`, `power-connectivity`, `i2c-multimaster`);
+   `spike/validator_corpus.py` **measures the false-negative rate: 9/9 covered faults
+   caught, 0 false positives, 0/9 = 0% FN** over the representable corpus (walked 33% →
+   22% → 0% as `part-rail-rating`, then `i2c-multimaster` + `power-connectivity` graduated
+   from `bad_uncovered` to `bad_covered`; `part-rail-rating` also joined the gate to
+   `verify_parts`, so it is ground-truth-aware). CI gates on covered-fault regressions.
+   **Still open:** a *third-party* (field-captured) corpus, and the `NOT_MODELLED` faults
+   today's data model can't express (decoupling, abs-max, pin-level ERC, thermal).
 6. ✅ **DONE — replaced the SPICE theatre** ([`SPEC-SPICE.md`](./SPEC-SPICE.md)). Did
    both: the Ohm's-law decks are deleted; `electrical.py` runs an **honestly analytic**
    LDO dropout-margin check on the gate path, and `spike/spice_sim.py` adds **real
