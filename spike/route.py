@@ -149,11 +149,22 @@ def pipeline(board: str, jar: str, specctra: str, workdir: str) -> int:
     violations = parse_drc(run_drc(str(routed), str(work / "drc.json")))
 
     # 6. export real copper Gerbers + drill
-    layers = gerber_layers_present(export_gerbers(str(routed), str(work / "gerbers")))
+    gdir = work / "gerbers"
+    layers = gerber_layers_present(export_gerbers(str(routed), str(gdir)))
 
-    ok = unrouted == 0 and not violations and REQUIRED_LAYERS <= layers
+    # 7. assemble + validate the JLCPCB package around the real copper + routed CPL
+    import fab_export
+    import partdb
+    snap = partdb.load_snapshot()
+    pkg = fab_export.build_routed_package(routed, gdir, snap, work / "package")
+    pkg_problems = fab_export.validate_routed_package(pkg, snap)
+    for p in pkg_problems:
+        print(f"   PKG: {p}")
+
+    ok = (unrouted == 0 and not violations and REQUIRED_LAYERS <= layers
+          and not pkg_problems)
     print(f"\n== GATE ==  unrouted={unrouted}  drc_violations={len(violations)}  "
-          f"layers={sorted(layers)}  ->  {'PASS' if ok else 'FAIL'}")
+          f"layers={sorted(layers)}  pkg_problems={len(pkg_problems)}  ->  {'PASS' if ok else 'FAIL'}")
     if violations:
         for v in violations[:10]:
             print(f"   DRC: {v.get('type', '?')} {v.get('description', '')}")

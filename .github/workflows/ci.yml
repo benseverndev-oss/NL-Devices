@@ -61,6 +61,8 @@ jobs:
         with: { python-version: "3.13" }
       - name: Install pinned atopile toolchain
         run: bash scripts/setup.sh
+      - name: Install spike Python deps (route.py → fab_export needs pyyaml)
+        run: pip install -r spike/requirements.txt
       - name: Install KiCad 9 (kicad-cli + pcbnew)
         # Pinned KiCad 9 for the Specctra round-trip (pcbnew), DRC + Gerber export.
         # Pin linted by scripts/check_toolchain.py against KICAD_VERSION.
