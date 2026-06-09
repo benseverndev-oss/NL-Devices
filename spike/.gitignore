@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 build/
-elec/
+**/elec/layout/
 kicad-symbols/
 lib_sym_cache*
 *_sklib.py
@@ -11,3 +11,5 @@ lib_sym_cache*
 *.log
 skidl_REPL.*
 *.net
+*.step
+*.STEP

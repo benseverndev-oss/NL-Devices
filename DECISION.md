@@ -95,10 +95,15 @@ validator are now de-risked enough to build on.
 
 ### Concrete next steps
 1. **Pin the toolchain** (atopile 0.12.5 / Python 3.13) in a setup script.
-2. **Author the first real verified IC block** via `ato create part` (e.g. the LDO
-   and the EEPROM) → prove the BOM gets real IC MPNs, and the i2c-tree populates.
+2. ✅ **DONE — authored the first real verified IC blocks** via `ato create part`
+   (AMS1117-3.3 LDO `C6186`, AT24C256 EEPROM `C6482`), wrapped with typed interfaces
+   in `spike/atopile/verified_slice.ato`. **The BOM now resolves both ICs with real
+   MPNs** (closing the Step-1 gap). Finding: atopile won't infer the I2C address from
+   pins (i2c-tree stays empty) → **the block contract must carry address as explicit
+   metadata** (the seam-validator already consumes it).
 3. **Formalize the block contract** as a schema (ports, params, invariants,
-   validation metadata, bound MPN) — wire `seam_validator.py` to consume it.
+   validation metadata, bound MPN, **I2C address**) — wire `seam_validator.py` to
+   consume it directly from authored blocks.
 4. **Then** start the LLM orchestrator against the typed `.ato` target.
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in

@@ -1,0 +1,24 @@
+#pragma experiment("TRAITS")
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Microchip_Tech_AT24C256C_SSHL_T_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C6482", date="2026-06-09T02:52:03.570236+00:00", checksum="f2e0032b7522389918b35131697fe3ef1806e3f33cd832a621398d272047265d">
+
+    trait is_atomic_part<manufacturer="Microchip Tech", partnumber="AT24C256C-SSHL-T", footprint="SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL.kicad_mod", symbol="AT24C256C-SSHL-T.kicad_sym", model="SOIC-8_L4.9-W3.9-H1.7-LS6.0-P1.27.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C6482", manufacturer="Microchip Tech", partno="AT24C256C-SSHL-T">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal A0 ~ pin 1
+    signal A1 ~ pin 2
+    signal A2 ~ pin 3
+    signal GND ~ pin 4
+    signal SCL ~ pin 6
+    signal SDA ~ pin 5
+    signal VCC ~ pin 8
+    signal WP ~ pin 7

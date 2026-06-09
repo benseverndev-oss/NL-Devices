@@ -10,3 +10,5 @@ builds:
     entry: sensor_node.ato:AppFault2NoPulls
   fault3:
     entry: sensor_node.ato:AppFault3AddrCollision
+  verified:
+    entry: verified_slice.ato:App

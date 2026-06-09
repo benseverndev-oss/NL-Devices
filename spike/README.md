@@ -252,3 +252,53 @@ cd atopile && ato build -b fault1   # atopile catches this (build fails by desig
                 ato build -b fault2  # builds clean -> atopile misses (our checker catches)
                 ato build -b fault3  # builds clean -> atopile misses (our checker catches)
 ```
+
+---
+
+# Next: First REAL verified IC blocks (the first moat brick) ✅
+
+Per [`DECISION.md`](../DECISION.md), effort belongs in the verified-block / IC
+part-data library. `atopile/verified_slice.ato` authors the first real ones.
+
+## Pattern: atomic part + typed wrapper = a verified block
+
+`ato create part --search <LCSC-id> --accept-single` fetches a real part (footprint,
+symbol, pinmap, 3D model, `has_part_picked` MPN) as an **atomic component with bare
+`signal` pins**. A *verified block* wraps that atomic part in a **typed module**
+(`ElectricPower`/`I2C`) with **invariants** — so it is both **manufacturable** (real
+MPN) and **seam-checkable** (typed ports). Two authored so far, in
+`elec/src/parts/`:
+
+| Block | Real part | LCSC | Footprint |
+|---|---|---|---|
+| `PowerBlock` | AMS1117-3.3 LDO | **C6186** | SOT-223-3 |
+| `SensorBlock` | AT24C256C I2C EEPROM | **C6482** | SOIC-8 |
+
+## Result: a fully manufacturable BOM (every line a real MPN)
+```
+Designator,Footprint,Quantity,Value,Manufacturer,Partnumber,LCSC Part #
+C1,C0402,1,1µF…,Samsung,CL05A105KA5NQNC,C52923
+C2,C0603,1,10µF…,Samsung,CL10A106KP8NNNC,C19702
+C3,C0603,1,100nF…,YAGEO,CC0603KRX7R9BB104,C14663
+"R1, R2",R0402,2,4.7kΩ…,UNI-ROYAL,0402WGF4701TCE,C25900
+U1,SOT-223-3,1,,Advanced Monolithic Systems,AMS1117-3.3,C6186
+U2,SOIC-8,1,,Microchip Tech,AT24C256C-SSHL-T,C6482
+```
+This closes the Step-1 gap (ICs absent from the BOM): with authored blocks, **both
+ICs resolve with real MPNs**.
+
+## Finding → a contract requirement
+The **i2c-tree is still empty** even with a real addressed EEPROM: atopile can't
+infer the I2C address from grounded A0/A1/A2 pins. So **the verified-block contract
+must carry the I2C address as explicit metadata** (not inferred) — which is exactly
+what `seam_validator.py` already consumes for the address-collision check. The
+authored atomic part gives manufacturability; **our block contract supplies the
+semantic metadata (address, supply range) the seam checks need.**
+
+## Reproduce
+```bash
+cd spike/atopile
+ato create part --search C6186 --accept-single   # LDO
+ato create part --search C6482 --accept-single   # EEPROM
+ato build -b verified                            # BOM has U1 C6186 + U2 C6482
+```
