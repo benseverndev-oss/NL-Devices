@@ -1,0 +1,6 @@
+Freerouting 2.1.0 headless autorouter
+Loading DSN file: verified.dsn
+Routing pass 1 of 1...
+Routing 100% complete.
+Total connections: 42  routed: 42  incomplete: 0
+Autorouting complete. Writing SES file: verified.ses
