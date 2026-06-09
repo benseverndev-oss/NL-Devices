@@ -10,3 +10,4 @@ lib_sym_cache*
 *.erc
 *.log
 skidl_REPL.*
+*.net
