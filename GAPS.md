@@ -89,15 +89,27 @@ electrical leg is a placeholder.
   in DESIGN §4; blocks were hand-authored via `ato create part` + hand-typed YAML. No
   extraction, no provenance, no human-in-the-loop review tooling.
 
-### 4c. Validation engine depth — 🟠
-- ⚠️ Only 3 topological + 2 toy-electrical checks, all I2C/rail-specific.
-- ❌ No pin-level ERC on the *composed* design in the pipeline (SKiDL ERC was a
-  one-off in step 2, never integrated into the gate).
-- ❌ No checks for max ratings (Vds/I/P dissipation), reverse polarity, decoupling
-  adequacy, thermal, bus capacitance/speed vs. participants, mechanical/footprint fit.
-- ❌ **Validator only ever tested on faults its authors designed it to catch.** No
-  external/adversarial corpus, no measured false-negative rate on real buggy designs.
-  The "trust layer" claim needs evidence beyond 3 hand-picked faults.
+### 4c. Validation engine depth — 🟠 (deepened 3→6 checks; FN rate now measured)
+- ⚠️ Was 3 topological + 2 toy-electrical checks; **now 6 checks** — added
+  `current-budget`, `i2c-reserved-addr`, and `i2c-bus-timing` (RC rise-time + bus
+  capacitance), fed real data via `block_contract.build_design`.
+- ❌ Still no pin-level ERC on the *composed* design (SKiDL ERC never wired into the gate).
+- ⚠️ Still no decoupling adequacy, abs-max/reverse-polarity, thermal, or
+  design-level part-rating checks — but these are now **enumerated and measured** as
+  false negatives rather than unknown (see below).
+- ✅ **Validator now adversarially tested with a measured false-negative rate.**
+
+> **Update (since this audit):** [`SPEC-VALIDATOR-DEPTH.md`](./SPEC-VALIDATOR-DEPTH.md).
+> `spike/validator_corpus.py` runs a labelled corpus (2 good · 6 covered-bad · 3
+> uncovered-bad) through the gate: **6/6 covered faults caught, 0 false positives,
+> and a published 3/9 = 33% false-negative rate** over all known-bad designs. The
+> uncovered set is chosen *because* no current check sees it (multi-master bus,
+> unpowered active device, rail-vs-ground-truth part rating), plus a `NOT_MODELLED`
+> roadmap (decoupling, abs-max, pin-ERC, thermal). CI gates on covered-fault
+> regressions only, so the FN inventory is surfaced without making CI red for known
+> gaps. **Still open:** the corpus is internal (not field-captured third-party), and
+> the named FN checks are unbuilt — `design-level-part-rating` (join to `verify_parts`)
+> is the highest-value next one.
 
 ### 4d. Ground-truth component DB — 🟠 (layer now exists for identity + key electricals)
 - ❌ **(was 🔴)** The "ground-truth part DB" in the DESIGN architecture diagram did not
@@ -178,9 +190,13 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    **atopile 0.12.5 / Python 3.13** (DECISION step 1), `scripts/check_toolchain.py`
    lints pin-consistency offline, and a `toolchain` CI job proves the pinned install
    resolves. *Still open:* a single root deps lockfile / hard-locked `pyyaml`.
-5. **Deepen + adversarially test the validator (🟠).** Add real-rating/ERC checks and
-   a *third-party* corpus of known-bad designs to measure false negatives — the only
-   way the "trust" claim earns its keep.
+5. ✅ **DONE (mechanism) — deepened + adversarially tested the validator** ([`SPEC-VALIDATOR-DEPTH.md`](./SPEC-VALIDATOR-DEPTH.md)).
+   Checks 3→6 (`current-budget`, `i2c-reserved-addr`, `i2c-bus-timing`); `spike/validator_corpus.py`
+   runs a labelled good/known-bad corpus and **measures the false-negative rate: 6/6
+   covered faults caught, 0 false positives, 3/9 = 33% FN** with each missing check
+   named. CI gates on covered-fault regressions. **Still open:** a *third-party*
+   (field-captured) corpus, and building the named FN checks — `design-level-part-rating`
+   (rail voltage vs the part's ground-truth datasheet rating) joins this to `verify_parts`.
 6. **Replace SPICE theater with a real model (🟠).** A genuine LDO/dropout + bus-
    capacitance simulation, or drop the ngspice framing and call the checks what they
    are (analytic limits).

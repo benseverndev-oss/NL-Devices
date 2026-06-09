@@ -32,5 +32,8 @@ is the interface.
   part-data layer: a sourced, pinned component snapshot + an offline CI gate that
   catches a wrong LCSC code / MPN / footprint / supply voltage in a block's YAML
   (closes the GAPS §4d 🔴).
+- **[SPEC-VALIDATOR-DEPTH.md](./SPEC-VALIDATOR-DEPTH.md)** — deepening the validator
+  (3→6 checks) and an adversarial corpus that **measures the false-negative rate**
+  (33% over known-bad designs), with the missing checks named as the roadmap (GAPS §4c).
 
 > Status: early scoping / pre-build.
