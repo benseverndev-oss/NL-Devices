@@ -23,5 +23,7 @@ is the interface.
   prototype: composes verified blocks, gated by the seam-validator.
 - **[RESEARCH.md](./RESEARCH.md)** — cited prior-art & competitive research with
   confidence levels behind every decision.
+- **[GAPS.md](./GAPS.md)** — gap audit: honest distance from the running spike to the
+  ultimate goal (verified by executing every component), with prioritized next steps.
 
 > Status: early scoping / pre-build.
