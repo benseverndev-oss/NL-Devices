@@ -90,15 +90,13 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b verified
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
-      - name: PROBE Task 4 tool surface (freerouting CLI + pcbnew Specctra + kicad-cli)
-        # TEMPORARY: confirm the exact freerouting flags + pcbnew Specctra signatures
-        # before wiring the pipeline. Removed once route.py drives them.
+      - name: Route the board (place → DSN → freerouting → SES → DRC → Gerbers)
+        # HARD GATE: route.py exits nonzero unless 0 unrouted nets + 0 DRC violations
+        # + all required copper layers exported. python3 here is the 3.13 venv; it shells
+        # to /usr/bin/python3 for pcbnew (Specctra), java for freerouting, kicad-cli.
         run: |
-          echo "== freerouting --help (Java 21) =="
-          java -jar freerouting.jar --help 2>&1 | head -60 || true
-          echo "== pcbnew Specctra signatures (system python) =="
-          /usr/bin/python3 -c "import pcbnew; print('Export:', pcbnew.ExportSpecctraDSN.__doc__); print('Import:', pcbnew.ImportSpecctraSES.__doc__)" || true
-          echo "== kicad-cli export gerbers help =="
-          kicad-cli pcb export gerbers --help 2>&1 | head -30 || true
-          echo "== kicad-cli export drill help =="
-          kicad-cli pcb export drill --help 2>&1 | head -25 || true
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/verified/verified.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route

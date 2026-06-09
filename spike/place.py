@@ -112,6 +112,27 @@ def place_board(pcb: Path) -> str:
     return write_positions(text, fps)
 
 
+def add_outline(text: str, w_mm: float, h_mm: float) -> str:
+    """Insert a rectangular Edge.Cuts board outline (0,0)→(w,h). The `ato build`
+    board has only the Edge.Cuts *layer* declared, no geometry — freerouting needs a
+    boundary to route within and DRC/Gerber export needs a board edge. Deterministic
+    (fixed uuid), spliced just before the final top-level close paren."""
+    rect = (
+        "\n\t(gr_rect\n"
+        "\t\t(start 0 0)\n"
+        f"\t\t(end {w_mm:.4f} {h_mm:.4f})\n"
+        "\t\t(stroke (width 0.1) (type default))\n"
+        "\t\t(fill no)\n"
+        '\t\t(layer "Edge.Cuts")\n'
+        '\t\t(uuid "00000000-0000-0000-0000-000000000e0c")\n'
+        "\t)\n"
+    )
+    cut = text.rstrip()
+    if not cut.endswith(")"):
+        raise ValueError("kicad_pcb text does not end with ')'")
+    return cut[:-1] + rect + ")\n"
+
+
 def _courtyards_overlap(fps) -> list[tuple[str, str]]:
     bad = []
     for i, a in enumerate(fps):
@@ -140,6 +161,10 @@ def selftest() -> bool:
     count_ok = out.count("(footprint") == text.count("(footprint")
     det = (out == out2) and count_ok
     print(f"  [{'ok' if det else 'FAIL'}] writer deterministic + footprint count preserved"); ok &= det
+    outlined = add_outline(out, w, h)
+    outline_ok = ("(gr_rect" in outlined and '(layer "Edge.Cuts")' in outlined
+                  and outlined.count("(footprint") == text.count("(footprint"))
+    print(f"  [{'ok' if outline_ok else 'FAIL'}] Edge.Cuts outline added, footprints intact"); ok &= outline_ok
     print("-" * 60); print("SELFTEST:", "PASS" if ok else "FAIL")
     return ok
 

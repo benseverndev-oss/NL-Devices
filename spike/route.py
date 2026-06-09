@@ -63,6 +63,101 @@ REQUIRED_LAYERS: set[str] = {"F_Cu", "B_Cu", "Edge_Cuts", "drill"}
 
 
 # ---------------------------------------------------------------------------
+# Tool orchestration — CI only (shells out to pcbnew / freerouting / kicad-cli)
+# ---------------------------------------------------------------------------
+
+def _run(cmd: list, check: bool = True) -> str:
+    """Run a command, echo it, return stdout+stderr. Raises on nonzero if check."""
+    import subprocess
+    cmd = [str(c) for c in cmd]
+    print("+ " + " ".join(cmd))
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    out = (p.stdout or "") + (p.stderr or "")
+    if out.strip():
+        print(out[-4000:])
+    if check and p.returncode != 0:
+        raise RuntimeError(f"{cmd[0]} failed (exit {p.returncode})")
+    return out
+
+
+def export_dsn(specctra: str, in_pcb: str, out_dsn: str) -> None:
+    # pcbnew lives in KiCad's system python, not the 3.13 venv → /usr/bin/python3.
+    _run(["/usr/bin/python3", specctra, "export-dsn", in_pcb, out_dsn])
+
+
+def run_freerouting(jar: str, dsn: str, ses: str) -> str:
+    # freerouting 2.x runs headless in CLI mode when given both -de (input .dsn) and
+    # -do (output .ses). -Djava.awt.headless avoids the GUI screen-resolution probe.
+    return _run(["java", "-Djava.awt.headless=true", "-jar", jar,
+                 "-de", dsn, "-do", ses, "-mp", "100"])
+
+
+def import_ses(specctra: str, in_pcb: str, ses: str, out_pcb: str) -> None:
+    _run(["/usr/bin/python3", specctra, "import-ses", in_pcb, ses, out_pcb])
+
+
+def run_drc(routed_pcb: str, out_json: str) -> str:
+    # --exit-code-violations returns nonzero when violations exist; that's expected
+    # signal, not a tool failure, so check=False and let parse_drc be the truth.
+    _run(["kicad-cli", "pcb", "drc", routed_pcb, "--format", "json",
+          "--severity-error", "--exit-code-violations", "-o", out_json], check=False)
+    return Path(out_json).read_text(encoding="utf-8")
+
+
+def export_gerbers(routed_pcb: str, outdir: str) -> list[str]:
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+    _run(["kicad-cli", "pcb", "export", "gerbers", "-o", outdir,
+          "--layers", "F.Cu,B.Cu,F.Mask,B.Mask,F.SilkS,B.SilkS,Edge.Cuts", routed_pcb])
+    _run(["kicad-cli", "pcb", "export", "drill", "-o", outdir, routed_pcb])
+    return [p.name for p in Path(outdir).iterdir()]
+
+
+def pipeline(board: str, jar: str, specctra: str, workdir: str) -> int:
+    """ato-built board → place + outline → DSN → freerouting → SES → DRC → Gerbers.
+    HARD GATE: 0 unrouted nets, 0 DRC violations, all REQUIRED_LAYERS present."""
+    import place  # spike/ is on sys.path[0] when route.py is the entrypoint
+    work = Path(workdir)
+    work.mkdir(parents=True, exist_ok=True)
+
+    # 1. place footprints courtyard-safe + stamp a board outline
+    text = Path(board).read_text(encoding="utf-8")
+    fps = place.parse_footprints(text)
+    w, h = place.place(fps)
+    placed_txt = place.add_outline(place.write_positions(text, fps), w, h)
+    placed = work / "placed.kicad_pcb"
+    placed.write_text(placed_txt, encoding="utf-8")
+    print(f"placed {len(fps)} footprints, board {w:.1f}x{h:.1f}mm -> {placed}")
+
+    # 2. export Specctra DSN (pcbnew)
+    dsn = work / "board.dsn"
+    export_dsn(specctra, str(placed), str(dsn))
+
+    # 3. autoroute (freerouting, headless)
+    ses = work / "board.ses"
+    log = run_freerouting(jar, str(dsn), str(ses))
+    (work / "freerouting.log").write_text(log, encoding="utf-8")
+    unrouted = parse_unrouted(log)
+
+    # 4. import the routed session back into a board (pcbnew)
+    routed = work / "routed.kicad_pcb"
+    import_ses(specctra, str(placed), str(ses), str(routed))
+
+    # 5. DRC on the routed board
+    violations = parse_drc(run_drc(str(routed), str(work / "drc.json")))
+
+    # 6. export real copper Gerbers + drill
+    layers = gerber_layers_present(export_gerbers(str(routed), str(work / "gerbers")))
+
+    ok = unrouted == 0 and not violations and REQUIRED_LAYERS <= layers
+    print(f"\n== GATE ==  unrouted={unrouted}  drc_violations={len(violations)}  "
+          f"layers={sorted(layers)}  ->  {'PASS' if ok else 'FAIL'}")
+    if violations:
+        for v in violations[:10]:
+            print(f"   DRC: {v.get('type', '?')} {v.get('description', '')}")
+    return 0 if ok else 1
+
+
+# ---------------------------------------------------------------------------
 # Offline self-test — runs against committed fixture files in fixtures/verified/
 # ---------------------------------------------------------------------------
 
@@ -115,8 +210,15 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:
         raise SystemExit(0 if selftest() else 1)
 
-    # Full pipeline entrypoint is added in Task 4.
-    raise SystemExit(
-        "route.py: pipeline mode not yet implemented (Task 4). "
-        "Use --selftest to run the offline parser tests."
-    )
+    if "--pipeline" in sys.argv:
+        import argparse
+        ap = argparse.ArgumentParser()
+        ap.add_argument("--pipeline", action="store_true")
+        ap.add_argument("--board", required=True)
+        ap.add_argument("--jar", required=True)
+        ap.add_argument("--specctra", required=True)
+        ap.add_argument("--work", default="build/route")
+        a = ap.parse_args()
+        raise SystemExit(pipeline(a.board, a.jar, a.specctra, a.work))
+
+    raise SystemExit("route.py: use --selftest (offline parsers) or --pipeline (CI)")
