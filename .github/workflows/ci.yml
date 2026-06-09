@@ -49,3 +49,40 @@ jobs:
         # Proves the documented setup actually resolves atopile==0.12.5 on Python 3.13
         # (and runs the offline consistency gate at the end). ngspice is optional here.
         run: bash scripts/setup.sh
+
+  route:
+    name: Autoroute → routed copper (sensor_node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Install pinned atopile toolchain
+        run: bash scripts/setup.sh
+      - name: Install KiCad 9 + Java (route backend)
+        run: |
+          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends kicad default-jre
+          kicad-cli version
+      - name: PROBE kicad-cli capabilities (learn the surface)
+        run: |
+          echo "== pcb export ==" ; kicad-cli pcb export --help || true
+          echo "== pcb drc ==" ;   kicad-cli pcb drc --help || true
+          python3 -c "import pcbnew; print('pcbnew', pcbnew.GetBuildVersion()); print([a for a in dir(pcbnew) if 'pecctra' in a or 'SES' in a or 'DSN' in a])"
+      - name: Fetch pinned freerouting
+        run: |
+          curl -fL -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v2.1.0/freerouting-2.1.0.jar"
+          java -jar freerouting.jar --version || java -jar freerouting.jar -h || true
+      - name: ato build sensor_node (network part-pick — the fragile step)
+        working-directory: spike/atopile
+        run: |
+          ato build -b sensor_node
+          echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Upload unrouted board as fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: sensor_node-unrouted
+          path: spike/atopile/**/*.kicad_pcb
+          if-no-files-found: error

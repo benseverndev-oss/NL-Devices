@@ -16,6 +16,8 @@ from pathlib import Path
 # --- single source of truth for the pin ---------------------------------------
 ATOPILE_VERSION = "0.12.5"
 PYTHON_VERSION = "3.13"
+KICAD_VERSION = "9.0"          # kicad-cli + pcbnew for the routing pipeline (route job)
+FREEROUTING_VERSION = "2.1.0"  # headless autorouter, pinned by release tag
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -62,6 +64,13 @@ def main() -> int:
                               re.search(rf'(PYTHON_VERSION="{re.escape(PYTHON_VERSION)}"|'
                                         rf'PythonVersion\s*=\s*"{re.escape(PYTHON_VERSION)}")', s) is not None,
                               ""))
+
+    # routing toolchain pins must match what the `route` CI job installs
+    ci = _read(".github/workflows/ci.yml")
+    results.append(_check(f"ci.yml route job pins KiCad {KICAD_VERSION}",
+                          f"kicad/kicad-{KICAD_VERSION}-releases" in ci, "PPA pin"))
+    results.append(_check(f"ci.yml route job pins freerouting {FREEROUTING_VERSION}",
+                          f"v{FREEROUTING_VERSION}/freerouting-{FREEROUTING_VERSION}.jar" in ci, "release pin"))
 
     print("-" * 72)
     ok = all(results)
