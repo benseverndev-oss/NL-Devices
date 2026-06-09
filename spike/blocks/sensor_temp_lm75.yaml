@@ -1,0 +1,12 @@
+id: sensor_temp_lm75
+version: 0.1.0
+function: "I2C temperature sensor (LM75A)"
+tags: [sensor, temperature, temp, i2c]
+bound_part:
+  lcsc: C477979
+  mpn: LM75AIMX/NOPB
+  manufacturer: Texas Instruments
+  footprint: SOIC-8
+ports:
+  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05}
+  i2c:   {type: i2c, role: peripheral, address: 0x48, provides_pullups: false}

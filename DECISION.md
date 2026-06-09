@@ -107,8 +107,12 @@ validator are now de-risked enough to build on.
    feeds the seam-validator. Authored slice validates **PASS**; all 3 faults caught;
    schema **rejects** a peripheral missing its address. This is the library format the
    orchestrator will emit.
-4. **Next — start the LLM orchestrator** against the typed `.ato` target / block-contract
-   schema (emit blocks + slice; compile via atopile; validate via `block_contract.py`).
+4. ✅ **STARTED — orchestrator prototype** ([`ORCHESTRATOR.md`](./ORCHESTRATOR.md),
+   `spike/orchestrator.py`): NL spec → composes verified blocks → **seam-validator
+   gate** (accepts safe designs, rejects an unsatisfiable 3-EEPROM one on address
+   collision). LLM seam is enum-constrained to the catalog (can't invent parts) with a
+   validator-feedback retry loop wired. Next: inject a real `call_model`; emit `.ato`
+   from the slice and `ato build` to end the loop in a manufacturable BOM.
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in
 > [`BUSINESS.md`](./BUSINESS.md) / [`RESEARCH.md`](./RESEARCH.md); this memo closes

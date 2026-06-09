@@ -1,6 +1,7 @@
 id: mcu_i2c_controller
 version: 0.1.0
 function: "MCU / I2C bus controller (provides bus pull-ups)"
+tags: [mcu, controller, i2c-controller]
 
 bound_part: null                 # abstract controller for this slice (TODO: real MCU)
 

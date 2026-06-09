@@ -1,0 +1,24 @@
+#pragma experiment("TRAITS")
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Texas_Instruments_LM75AIMX_NOPB_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C477979", date="2026-06-09T03:03:02.756539+00:00", checksum="4a0b9049e04750dbe9ad3856917021e2939019015b4bf2d172f7889a711aadfe">
+
+    trait is_atomic_part<manufacturer="Texas Instruments", partnumber="LM75AIMX/NOPB", footprint="SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL.kicad_mod", symbol="LM75AIMX_NOPB.kicad_sym", model="SOIC-8_L4.9-W3.9-H1.7-LS6.0-P1.27.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C477979", manufacturer="Texas Instruments", partno="LM75AIMX/NOPB">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal A0 ~ pin 7
+    signal A1 ~ pin 6
+    signal A2 ~ pin 5
+    signal GND ~ pin 4
+    signal OS ~ pin 3
+    signal SCL ~ pin 2
+    signal SDA ~ pin 1
+    signal VSpos ~ pin 8

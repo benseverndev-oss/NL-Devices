@@ -19,6 +19,8 @@ is the interface.
   `spike/`.)*
 - **[DECISION.md](./DECISION.md)** — spike decision memo: scorecard + chosen
   substrate/architecture (atopile + custom seam-validator + ngspice harness).
+- **[ORCHESTRATOR.md](./ORCHESTRATOR.md)** — NL → validated-design orchestrator
+  prototype: composes verified blocks, gated by the seam-validator.
 - **[RESEARCH.md](./RESEARCH.md)** — cited prior-art & competitive research with
   confidence levels behind every decision.
 
