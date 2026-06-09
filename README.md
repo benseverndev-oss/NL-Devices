@@ -25,5 +25,8 @@ is the interface.
   confidence levels behind every decision.
 - **[GAPS.md](./GAPS.md)** — gap audit: honest distance from the running spike to the
   ultimate goal (verified by executing every component), with prioritized next steps.
+- **[SPEC-NL-PLANNER.md](./SPEC-NL-PLANNER.md)** — implementation spec for the top
+  gap: wiring a real Claude planner into the existing validator-gated seam, with an
+  eval harness and CI.
 
 > Status: early scoping / pre-build.

@@ -134,7 +134,7 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    run the existing enum-constrained tool against a real model, and **actually
    implement the feedback→retry loop** in `run()`. Build a 15–20 spec eval set and
    report plan-correctness. *This is the cheapest way to turn the namesake from
-   aspiration into evidence.*
+   aspiration into evidence.* → **Specced in [`SPEC-NL-PLANNER.md`](./SPEC-NL-PLANNER.md).**
 2. **Author one real MCU block (🔴).** A concrete microcontroller (e.g. an
    STM32/ESP/RP2 with real LCSC part, power, decoupling, reset, programming header).
    Until this exists, no emitted board functions — and it exercises whether the block
