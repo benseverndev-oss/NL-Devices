@@ -53,6 +53,8 @@ jobs:
   route:
     name: Autoroute → routed copper (sensor_node)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write          # so the one-time fetch step can commit models back
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -158,12 +160,22 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b sensor_node
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
-      - name: Upload fetched 3D models + unrouted board as fixtures
-        uses: actions/upload-artifact@v4
-        with:
-          name: sensor_node-models-and-board
-          path: |
-            spike/atopile/elec/src/parts/**/*.step
-            spike/atopile/elec/src/parts/**/*.STEP
-            spike/atopile/**/*.kicad_pcb
-          if-no-files-found: error
+      - name: Commit fetched models + board fixture back to the branch (one-time)
+        if: github.event_name == 'push'
+        # TEMPORARY scaffolding (Task 1, Option 3): the sandbox can't pull CI artifacts
+        # (Azure blob is unreachable from there), so CI commits the fetched 3D models +
+        # the unrouted board fixture straight back to the branch. [skip ci] stops this
+        # commit from re-triggering CI. Removed (with the fetch steps) in the follow-up.
+        run: |
+          set -euo pipefail
+          mkdir -p spike/fixtures/sensor_node
+          cp spike/atopile/elec/layout/sensor_node/sensor_node.kicad_pcb \
+             spike/fixtures/sensor_node/sensor_node.kicad_pcb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          find spike/atopile/elec/src/parts -type f \( -iname '*.step' -o -iname '*.STEP' \) \
+            -exec git add -f {} +
+          git add -f spike/fixtures/sensor_node/sensor_node.kicad_pcb
+          echo "== staged ==" ; git status --short
+          git commit -m "Commit fetched 3D models + sensor_node board fixture [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

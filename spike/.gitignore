@@ -11,7 +11,8 @@ lib_sym_cache*
 *.log
 skidl_REPL.*
 *.net
-*.step
-*.STEP
+# NOTE: per-part 3D models under elec/src/parts/**/*.step are COMMITTED (real part
+# data, for reproducible ato build in CI). Build-output .step lives under build/ and
+# **/elec/layout/ which are already ignored above, so we don't blanket-ignore *.step.
 generated.ato
 gen_*.ato
