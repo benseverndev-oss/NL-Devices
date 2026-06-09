@@ -69,7 +69,10 @@ jobs:
         run: |
           echo "== pcb export ==" ; kicad-cli pcb export --help || true
           echo "== pcb drc ==" ;   kicad-cli pcb drc --help || true
-          python3 -c "import pcbnew; print('pcbnew', pcbnew.GetBuildVersion()); print([a for a in dir(pcbnew) if 'pecctra' in a or 'SES' in a or 'DSN' in a])"
+          # pcbnew ships against the system python (KiCad's), not the setup-python 3.13.
+          # Probe with the system interpreter; never red-fail this exploratory step.
+          echo "== pcbnew (system python) =="
+          /usr/bin/python3 -c "import pcbnew; print('pcbnew', pcbnew.GetBuildVersion()); print([a for a in dir(pcbnew) if 'pecctra' in a.lower() or 'specctra' in a.lower() or 'SES' in a or 'DSN' in a or 'Dsn' in a or 'Ses' in a])" || true
       - name: Fetch pinned freerouting
         run: |
           curl -fL -o freerouting.jar \
