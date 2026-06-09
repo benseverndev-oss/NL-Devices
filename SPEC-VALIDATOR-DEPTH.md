@@ -37,24 +37,35 @@ A labelled corpus runs through `validate()` and every design is classified:
   CI — they are the published roadmap.
 
 ```
-covered faults:    6   detected 6/6
+covered faults:    7   detected 7/7    (was 6 — 'part-rail-rating' added post-roadmap)
 good designs:      2   (0 false positives)
-uncovered faults:  3   still-missed 3
-measured false-negative rate (of all 9 known-bad designs): 3/9 = 33%
+uncovered faults:  2   still-missed 2
+measured false-negative rate (of all 9 known-bad designs): 2/9 = 22%   (was 33%)
 ```
 
 The `bad_uncovered` set is the honest part — faults chosen *because* no current check
-sees them:
+sees them. One of the original three (`design-level-part-rating`) has since been
+**built** (see below), dropping the FN rate 33% → 22%:
 
 | Missing check | Known-bad design that slips through |
 |---|---|
 | `i2c-multimaster` | two controllers on one bus |
 | `power-connectivity` | an active device powered by no rail |
-| `design-level-part-rating` | a part whose YAML rating fits the rail but is wrong in reality (the part is checked in isolation by `verify_parts`, never against the rail it actually sees) |
+| ~~`design-level-part-rating`~~ | ✅ **now caught** — see "Post-roadmap" below |
 
 Plus a `NOT_MODELLED` list (decoupling adequacy, absolute-max / reverse-polarity,
 pin-level ERC on the netlist, thermal, bus-speed-vs-slowest-participant) that today's
 data model can't even express — the longer roadmap.
+
+## Post-roadmap: `part-rail-rating` (joins the validator to the part DB)
+
+The highest-value uncovered FN is now a real check. `seam_validator.check_part_rail_rating`
+looks up each sink's **ground-truth datasheet operating range** (from the `verify_parts`
+snapshot, attached by `block_contract.build_design(..., snapshot)`) and asserts the rail
+voltage the part *actually sees* is within it — catching a part placed on a wrong-voltage
+rail even when the hand-typed YAML claims it's fine. The orchestrator gate now loads the
+snapshot and runs it, so the real product gate is ground-truth-aware. The corpus's
+`bad_part_rail_rating` (a 5V-only part on the 3.3V rail) is now caught.
 
 ## CI
 
@@ -68,6 +79,5 @@ surfaced on every run without making CI red for known gaps.
   includes out-of-design faults to make the FN number real, but a genuinely external
   corpus of field-captured bad boards is the stronger next step (and would likely push
   the FN rate up before new checks push it back down).
-- `design-level-part-rating` is the highest-value next check: it joins this validator
-  to the `verify_parts` ground-truth layer — checking the voltage each part *actually
-  sees on its rail* against the part's datasheet rating, not just the block's YAML.
+- ✅ `design-level-part-rating` (the highest-value next check) is now **built** — see
+  "Post-roadmap" above. Remaining FNs: `i2c-multimaster` and `power-connectivity`.
