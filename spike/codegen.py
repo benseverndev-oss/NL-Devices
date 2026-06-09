@@ -95,7 +95,7 @@ def build(slice_doc, lib, target="generated") -> tuple[bool, str]:
 if __name__ == "__main__":
     lib = bc.load_blocks()
     spec = "A microcontroller that logs temperature readings to memory over I2C"
-    slice_doc, design, res, ok = orch.run(spec, lib, orch.HeuristicPlanner())
+    slice_doc, design, res, ok, _ = orch.run(spec, lib, orch.HeuristicPlanner())
     print(f"SPEC: {spec}")
     print(f"validation gate: {'PASS' if ok else 'REJECT'}")
     if not ok:

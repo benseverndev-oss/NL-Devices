@@ -58,6 +58,11 @@ Net: the project has a **proven validator** and a **real compile-to-BOM path**, 
 the **"NL" leg — the product's namesake — is essentially unbuilt**, and the
 electrical leg is a placeholder.
 
+> **Update (since this audit):** rows 1–2 are now addressed — `spike/llm_client.py`
+> wires a real `claude-opus-4-8` planner into the seam and `run()` implements the
+> actual feedback→retry loop, evidenced by `spike/eval_planner.py` (see §5 item 1).
+> The electrical-leg row (3) and the structural gaps in §4 still stand.
+
 ---
 
 ## 4. Gap-by-layer
@@ -130,11 +135,14 @@ electrical leg is a placeholder.
 
 Ordered by *unlocks-the-most* / *cheapest-proof-first*:
 
-1. **Make "NL" real (🔴, small).** Inject an Anthropic `call_model` into `LLMPlanner`,
-   run the existing enum-constrained tool against a real model, and **actually
-   implement the feedback→retry loop** in `run()`. Build a 15–20 spec eval set and
-   report plan-correctness. *This is the cheapest way to turn the namesake from
-   aspiration into evidence.* → **Specced in [`SPEC-NL-PLANNER.md`](./SPEC-NL-PLANNER.md).**
+1. ✅ **DONE (mechanism) — "NL" wired** ([`SPEC-NL-PLANNER.md`](./SPEC-NL-PLANNER.md)).
+   `spike/llm_client.py` plugs an Anthropic `call_model` (`claude-opus-4-8`, forced
+   `emit_plan` tool) into the seam; `run()` now implements the **real feedback→retry
+   loop** (was an unused param); `spike/eval_planner.py` scores a 16-spec corpus —
+   offline `100%` correctness / `0%` hallucination, layer-2 safety + attempt-≥2
+   recovery checks, runnable in CI without a key (`--live` for the real model).
+   **Caveat:** proves the *mechanism* on a 4-block catalog; a live run needs
+   `ANTHROPIC_API_KEY`, and breadth (item 2) is what proves it *scales*.
 2. **Author one real MCU block (🔴).** A concrete microcontroller (e.g. an
    STM32/ESP/RP2 with real LCSC part, power, decoupling, reset, programming header).
    Until this exists, no emitted board functions — and it exercises whether the block
@@ -142,9 +150,9 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
 3. **Stand up a real part-data layer (🔴).** Ingest jlcparts; back each block's YAML
    numbers with a ground-truth lookup so a wrong rating/address/footprint is *caught*,
    not trusted. Add an offline/pinned snapshot for reproducible CI builds.
-4. **Pin the toolchain + add CI (🟡, trivial).** Setup script (atopile 0.12.5 / Py
-   3.13), a SessionStart hook, and a CI run of the four spike scripts. Closes
-   DECISION step 1 and stops bit-rot.
+4. **Pin the toolchain + add CI (🟡).** ✅ **CI added** (`.github/workflows/ci.yml`
+   runs ngspice + the four spike scripts incl. the planner eval). *Still open:* pin
+   atopile 0.12.5 / Py 3.13 in a setup script (DECISION step 1).
 5. **Deepen + adversarially test the validator (🟠).** Add real-rating/ERC checks and
    a *third-party* corpus of known-bad designs to measure false negatives — the only
    way the "trust" claim earns its keep.

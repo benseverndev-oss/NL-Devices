@@ -73,9 +73,23 @@ validator gate. Two safety layers, neither trusting the model:
                       "sensor_eeprom_24c256","sensor_eeprom_24c256_b","sensor_temp_lm75"]}
 ```
 
-`plan(spec, lib, feedback=…)` already accepts validator feedback, so the LLM
-retry-on-failure loop is wired; it activates when a `call_model` client is injected
-(no usable API key in this environment, so the prototype runs the heuristic planner).
+`plan(spec, lib, feedback=…)` accepts validator feedback, and **`run()` now
+implements the actual retry loop** (`spike/orchestrator.py`): a rejected plan is
+fed the gate's messages and re-attempted up to `max_attempts`. It engages for any
+feedback-aware planner; with no `call_model` injected the heuristic path runs
+single-shot. Inject a client via `llm_client.make_call_model()` (or set
+`ANTHROPIC_API_KEY`) to run the LLM seam — see [`SPEC-NL-PLANNER.md`](./SPEC-NL-PLANNER.md).
+
+### Eval (`spike/eval_planner.py`)
+
+A 16-spec corpus ([`spike/evals/specs.yaml`](./spike/evals)) runs NL → plan → gate
+and reports plan-correctness, a **0-hallucination** safety number, and the
+gate-catch rate. It defaults to an offline `FakeModel` (deterministic,
+catalog-respecting) so the two anti-hallucination layers are testable in CI
+**without an API key**; `--live` runs the same corpus against `claude-opus-4-8`.
+Offline run: `plan_correctness 100%`, `hallucination_rate 0%`, plus a layer-2
+safety check (an out-of-catalog plan is rejected by the pipeline) and a recovery
+check (a rejected plan is fixed on attempt ≥ 2 via gate feedback).
 
 ## Scope
 
@@ -84,8 +98,11 @@ a deterministic implementation and a fully-specified, constrained LLM seam; real
 parts; the reject-unsafe-design behaviour.
 
 **Out (next):**
-1. **Real LLM planner** — inject an Anthropic `call_model`; run NL specs through the
-   model with the enum-constrained tool + validator-feedback retry loop.
+1. ✅ **DONE — real LLM planner wired** (`spike/llm_client.py`): an Anthropic
+   `call_model` (`claude-opus-4-8`, forced `emit_plan` tool) plugs into the seam,
+   the **feedback retry loop is now real** in `run()`, and `eval_planner.py` scores
+   a 16-spec corpus (offline FakeModel in CI; `--live` against the model). Remaining:
+   a live run needs `ANTHROPIC_API_KEY` (absent here).
 2. ✅ **DONE — atopile codegen** (`spike/codegen.py`): emits `App.ato` from the slice
    and `ato build`s to a manufacturable BOM. `orchestrator.py --build` runs the whole
    NL → BOM loop.

@@ -1,0 +1,5 @@
+# Spike runtime deps. The seam-validator / contract / orchestrator core run on
+# pyyaml alone; `anthropic` is only needed to wire a real LLM planner (eval --live,
+# or orchestrator.py with ANTHROPIC_API_KEY set).
+pyyaml>=6.0
+anthropic>=0.40

@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ngspice (BSD electrical-gate backend)
+        run: sudo apt-get update && sudo apt-get install -y ngspice
+      - name: Install Python deps
+        run: pip install -r spike/requirements.txt
+      - name: Validator + contract + orchestrator + planner eval
+        working-directory: spike
+        run: |
+          python3 seam_validator.py
+          python3 block_contract.py --faults
+          python3 orchestrator.py
+          python3 eval_planner.py        # offline FakeModel; gates on 0-hallucination

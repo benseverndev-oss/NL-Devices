@@ -1,0 +1,89 @@
+# NL-planner eval corpus (SPEC-NL-PLANNER.md §4).
+# Each case: a natural-language spec + the expected gated outcome.
+#   expect_pass            : should the design clear the gate?
+#   must_include_tags      : tags that MUST appear among the selected blocks (on a pass)
+#   expect_reason          : substring of the gate-check name that must fail (on a reject)
+#   forbid_outside_catalog : every emitted block_id must be in the catalog (always true in practice)
+
+# --- in-catalog happy paths --------------------------------------------------
+- spec: "A microcontroller that logs temperature readings to memory over I2C"
+  expect_pass: true
+  must_include_tags: [temperature, eeprom]
+  forbid_outside_catalog: true
+
+- spec: "An I2C temperature sensor node that stores readings"
+  expect_pass: true
+  must_include_tags: [temperature, eeprom]
+  forbid_outside_catalog: true
+
+- spec: "Just an MCU that reads a temperature sensor over I2C"
+  expect_pass: true
+  must_include_tags: [temperature]
+  forbid_outside_catalog: true
+
+- spec: "A board that logs data to an EEPROM"
+  expect_pass: true
+  must_include_tags: [eeprom]
+  forbid_outside_catalog: true
+
+# --- paraphrase robustness (same intent, different words) --------------------
+- spec: "A thermometer that saves its readings into storage"
+  expect_pass: true
+  must_include_tags: [temperature, eeprom]
+  forbid_outside_catalog: true
+
+- spec: "Climate logger: record ambient temperature to non-volatile memory"
+  expect_pass: true
+  must_include_tags: [temperature, eeprom]
+  forbid_outside_catalog: true
+
+# --- quantities -> distinct auto-assigned addresses --------------------------
+- spec: "An MCU with two EEPROM memory chips"
+  expect_pass: true
+  must_include_tags: [eeprom]
+  forbid_outside_catalog: true
+
+- spec: "An MCU with three EEPROM memory chips on one I2C bus"
+  expect_pass: true
+  must_include_tags: [eeprom]
+  forbid_outside_catalog: true
+
+- spec: "A node with four storage chips on I2C"
+  expect_pass: true
+  must_include_tags: [eeprom]
+  forbid_outside_catalog: true
+
+# --- capacity rejection (gate must reject) -----------------------------------
+- spec: "An MCU with nine EEPROM memory chips on one I2C bus"
+  expect_pass: false
+  expect_reason: address
+  forbid_outside_catalog: true
+
+- spec: "An MCU with ten EEPROM memory chips on one bus"
+  expect_pass: false
+  expect_reason: address
+  forbid_outside_catalog: true
+
+# --- out-of-catalog asks: must NOT hallucinate a part ------------------------
+- spec: "An MCU that also needs a CAN bus transceiver"
+  expect_pass: true              # builds the I2C core; CAN simply absent
+  forbid_outside_catalog: true
+
+- spec: "A temperature logger with a Wi-Fi radio and a USB-C connector"
+  expect_pass: true              # temp+eeprom core; radio/USB absent (not in catalog)
+  must_include_tags: [temperature]
+  forbid_outside_catalog: true
+
+- spec: "A device with an accelerometer and a buck converter"
+  expect_pass: true              # only power+controller resolve; neither part invented
+  forbid_outside_catalog: true
+
+# --- minimal / bare ----------------------------------------------------------
+- spec: "A simple I2C microcontroller board"
+  expect_pass: true
+  forbid_outside_catalog: true
+
+- spec: "A regulated 3.3V microcontroller with a temperature sensor and memory"
+  expect_pass: true
+  must_include_tags: [temperature, eeprom]
+  forbid_outside_catalog: true
