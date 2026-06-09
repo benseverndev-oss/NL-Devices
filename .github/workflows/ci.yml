@@ -31,6 +31,11 @@ jobs:
         run: |
           python3 verify_parts.py            # every bound block vs pinned snapshot
           python3 verify_parts.py --selftest # injected part-data faults must be caught
+      - name: Electrical — analytic gate + real ngspice transient sims
+        working-directory: spike
+        run: |
+          python3 electrical.py              # analytic LDO dropout-margin check (has teeth)
+          python3 spice_sim.py --selftest    # REAL .tran: I2C rise + rail droop; cross-checks the analytic limit
 
   toolchain:
     name: Pinned atopile install (0.12.5 / Python 3.13)

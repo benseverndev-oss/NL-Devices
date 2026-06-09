@@ -24,6 +24,7 @@ ports:
     voltage: 3.3
     tolerance: 0.02              # the rail this block guarantees
     max_current_ma: 800          # regulator output capacity
+    dropout_v: 1.3               # AMS1117-3.3 worst-case dropout — needs Vin >= 4.6V
 
 invariants:
   - "power_out within 3.3V +/- 5%"
