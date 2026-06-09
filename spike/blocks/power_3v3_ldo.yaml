@@ -1,0 +1,28 @@
+# Verified block contract — schema v0.1
+# A "verified block" = a manufacturable part bound to typed, seam-checkable ports.
+id: power_3v3_ldo
+version: 0.1.0
+function: "5V -> 3V3 linear regulator"
+
+bound_part:                      # real, orderable part (from `ato create part`)
+  lcsc: C6186
+  mpn: AMS1117-3.3
+  manufacturer: Advanced Monolithic Systems
+  footprint: SOT-223-3
+
+ports:
+  power_in:
+    type: power
+    role: sink
+    voltage: 5.0
+    tolerance: 0.20              # LDO tolerates a wide input
+  power_out:
+    type: power
+    role: source
+    voltage: 3.3
+    tolerance: 0.02              # the rail this block guarantees
+
+invariants:
+  - "power_out within 3.3V +/- 5%"
+validation:
+  checks_owned: [power-domain]

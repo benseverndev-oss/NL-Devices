@@ -1,0 +1,21 @@
+id: sensor_eeprom_24c256
+version: 0.1.0
+function: "I2C EEPROM peripheral"
+
+bound_part:
+  lcsc: C6482
+  mpn: AT24C256C-SSHL-T
+  manufacturer: Microchip Tech
+  footprint: SOIC-8
+
+ports:
+  power:
+    type: power
+    role: sink
+    voltage: 3.3
+    tolerance: 0.05
+  i2c:
+    type: i2c
+    role: peripheral
+    address: 0x50                # EXPLICIT metadata — atopile can't infer this from pins
+    provides_pullups: false

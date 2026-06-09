@@ -101,10 +101,14 @@ validator are now de-risked enough to build on.
    MPNs** (closing the Step-1 gap). Finding: atopile won't infer the I2C address from
    pins (i2c-tree stays empty) → **the block contract must carry address as explicit
    metadata** (the seam-validator already consumes it).
-3. **Formalize the block contract** as a schema (ports, params, invariants,
-   validation metadata, bound MPN, **I2C address**) — wire `seam_validator.py` to
-   consume it directly from authored blocks.
-4. **Then** start the LLM orchestrator against the typed `.ato` target.
+3. ✅ **DONE — formalized the block-contract schema** (`spike/blocks/*.yaml`) with
+   ports, params, invariants, bound MPN, and the **required I2C address**; composition
+   in `spike/slices/*.yaml`; `spike/block_contract.py` schema-validates blocks and
+   feeds the seam-validator. Authored slice validates **PASS**; all 3 faults caught;
+   schema **rejects** a peripheral missing its address. This is the library format the
+   orchestrator will emit.
+4. **Next — start the LLM orchestrator** against the typed `.ato` target / block-contract
+   schema (emit blocks + slice; compile via atopile; validate via `block_contract.py`).
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in
 > [`BUSINESS.md`](./BUSINESS.md) / [`RESEARCH.md`](./RESEARCH.md); this memo closes

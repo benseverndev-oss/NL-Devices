@@ -1,0 +1,20 @@
+# Slice composition — instantiate verified blocks and wire their typed ports.
+name: sensor_node
+
+instances:                       # instance name -> block id
+  psu: power_3v3_ldo
+  mcu: mcu_i2c_controller
+  sensor: sensor_eeprom_24c256
+
+rails:                           # power seams
+  - name: "5V"
+    source: {voltage: 5.0, tolerance: 0.05}    # board-edge supply
+    sinks: [psu.power_in]
+  - name: "3V3"
+    source_from: psu.power_out                 # rail driven by a block's source port
+    sinks: [mcu.power, sensor.power]
+
+buses:                           # I2C seams
+  - name: i2c_bus
+    type: i2c
+    members: [mcu.i2c, sensor.i2c]

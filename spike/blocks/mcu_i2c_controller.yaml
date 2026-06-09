@@ -1,0 +1,16 @@
+id: mcu_i2c_controller
+version: 0.1.0
+function: "MCU / I2C bus controller (provides bus pull-ups)"
+
+bound_part: null                 # abstract controller for this slice (TODO: real MCU)
+
+ports:
+  power:
+    type: power
+    role: sink
+    voltage: 3.3
+    tolerance: 0.05
+  i2c:
+    type: i2c
+    role: controller
+    provides_pullups: true       # this block terminates the bus

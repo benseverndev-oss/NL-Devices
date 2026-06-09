@@ -302,3 +302,54 @@ ato create part --search C6186 --accept-single   # LDO
 ato create part --search C6482 --accept-single   # EEPROM
 ato build -b verified                            # BOM has U1 C6186 + U2 C6482
 ```
+
+---
+
+# Block-contract schema + contract-driven validation ✅
+
+Formalizes the verified-block contract (SPIKE.md §3) and wires the seam-validator
+to read **authored blocks**, not hand-built Python. Three pieces:
+
+- **`blocks/*.yaml`** — the verified-block contracts. Each carries: `id`/`version`/
+  `function`, a `bound_part` (real LCSC MPN + footprint), typed `ports`, and
+  `invariants`. The **semantic metadata atopile cannot infer lives here** — I2C
+  `address`, supply `voltage`/`tolerance`.
+- **`slices/*.yaml`** — a composition: block `instances` + `rails` + `buses`
+  (wiring typed ports into seams).
+- **`block_contract.py`** — loads + **schema-validates** the blocks, composes the
+  slice into a `seam_validator.Design`, and runs the three seam checks.
+
+## The schema is enforced
+`block_contract.py` rejects malformed blocks loudly — e.g. a peripheral missing its
+address:
+```
+ValueError: bad.yaml: i2c peripheral 'i2c' missing 'address'
+            (required — atopile cannot infer it)
+```
+That rule encodes the Step-3/verified-block finding directly into the contract.
+
+## It works end-to-end
+```
+$ python3 block_contract.py --faults
+loaded 3 verified blocks: mcu_i2c_controller, power_3v3_ldo, sensor_eeprom_24c256
+  · power_3v3_ldo            part=C6186
+  · sensor_eeprom_24c256     part=C6482
+validating authored slice:
+  [PASS] sensor_node
+injecting seam faults (each must be caught):
+  [caught] fault: MCU on 5V rail        └─ POWER: rail '5V' [4.750V,5.250V] outside 'mcu' [3.135V,3.465V]
+  [caught] fault: no I2C pull-ups       └─ I2C: bus 'i2c_bus' has no pull-up provider
+  [caught] fault: duplicate I2C address └─ I2C: bus 'i2c_bus' address 0x50 collision ('sensor','sensor_b')
+RESULT: PASS
+```
+
+**Significance:** the validator now consumes the **authored block library** — the
+same typed, manufacturable blocks (`C6186`, `C6482`) that build in atopile. This is
+the library format the LLM orchestrator will emit/target: parts give
+manufacturability, the contract gives the seam-checkable semantics. (Needs `pyyaml`,
+preinstalled with system `python3` here.)
+
+## Reproduce
+```bash
+cd spike && python3 block_contract.py --faults
+```
