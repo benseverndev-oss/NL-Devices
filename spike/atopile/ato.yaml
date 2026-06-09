@@ -2,3 +2,5 @@ requires-atopile: ">=0.12.0"
 builds:
   divider:
     entry: main.ato:Divider
+  sensor_node:
+    entry: sensor_node.ato:App

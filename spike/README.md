@@ -1,4 +1,11 @@
-# Spike — Step 0: Toolchain Baseline (COMPLETE ✅)
+# Spike Log
+
+Progress against the [`SPIKE.md`](../SPIKE.md) plan. Step 0 = toolchain baseline;
+Step 1 = the 3-block typed slice in atopile.
+
+---
+
+# Step 0: Toolchain Baseline (COMPLETE ✅)
 
 Green baseline for the [`SPIKE.md`](../SPIKE.md) bake-off. Establishes that both
 substrates and the SPICE-validation leg run end-to-end on a trivial circuit, and
@@ -82,3 +89,56 @@ cd spike/atopile && ato build                      # -> build/builds/divider/...
 - `skidl/requirements.txt` — pinned deps (skidl only)
 
 Generated dirs (`build/`, `elec/`, `.venv/`, `kicad-symbols/`) are git-ignored.
+
+---
+
+# Step 1: 3-Block Typed Slice in atopile (COMPLETE ✅, with findings)
+
+`atopile/sensor_node.ato` — the SPIKE.md §2 slice: `5V →[PowerBlock]→ 3V3 →
+[McuBlock] + [SensorBlock]`, composed over **typed** seams (`ElectricPower`,
+`I2C`), built with `ato build -b sensor_node`.
+
+The three blocks use the faebryk typed-interface library bundled with atopile:
+`LDO` (PowerBlock), a custom I2C-controller (`McuBlock`: decoupling + bus
+pull-ups), and a real `EEPROM` as the I2C peripheral (`SensorBlock`).
+
+## What works (the moat-relevant wins)
+
+| Capability | Evidence |
+|---|---|
+| **Typed-interface composition** | 3 blocks connect via `ElectricPower` + `I2C` with a single `~`; build's `post-design` + `post-solve` checks pass |
+| **Constraint solver validates invariants** | `assert power_out.voltage within 3.3V +/- 5%` etc. solve; LDO `output_voltage` resolved to **`[3.234V, 3.366V]`** (= 3.3V ±2%) in the variable report |
+| **Passive part-picking → real parts** | BOM picks real LCSC parts: `100nF C14663`, `1µF C52923`, `10µF C19702`, `4.7kΩ ×2 C25900` |
+| **Typed seams appear in the netlist** | `sensor_node.net` (243 lines) carries real nets `SCL`, `SDA`, `power-VCC`, `power_in-VCC`, `GND` |
+| **Standalone artifacts** | netlist + `sensor_node.bom.csv` + `*.variables.md` + `*.kicad_pcb` |
+
+## Findings / limits (what this teaches us about the block library)
+
+1. **IC part-picking is NOT automatic.** The generic `LDO` and `EEPROM` produced
+   `WARNING: No pickers and no footprint` and are **absent from the BOM** — only
+   passives auto-resolve. This confirms the RESEARCH.md flag (IC picker coverage
+   = Low). *Net: a "verified block" with a real IC is real work, not a free pick.*
+2. **Pinning a concrete IC requires a component *definition*.** Setting
+   `regulator.lcsc_id = "C6186"` on a generic instance is rejected:
+   *"You can't assign to a `component` with a specific part number outside of its
+   definition."* → concrete parts must be authored as component blocks (or via
+   `ato create part`, which fetches the footprint/pinmap). **This is precisely the
+   per-block effort our library must own** — and it's where the datasheet/part-data
+   moat (RESEARCH.md §3) actually bites.
+3. **`i2c-tree` report is empty** — atopile's I2C semantic report needs concrete,
+   address-bearing devices (the EEPROM didn't resolve to a part). Address/bus-rule
+   checking therefore depends on real IC bindings, not just the typed interface.
+
+## Implication for the bake-off
+
+atopile delivers the **typed seams + constraint solving + passive resolution** for
+free — a real head start on the seam-validation moat. The gap is **concrete IC
+binding** (footprints, pinmaps, addresses), which is unavoidable block-library work
+in *any* substrate. Step 3 will test whether atopile's typed checks catch the
+injected seam faults, or whether we still need a custom seam layer.
+
+## Reproduce
+```bash
+cd spike/atopile && ato build -b sensor_node    # atopile 0.12.5, Python 3.13
+# artifacts in build/builds/sensor_node/
+```

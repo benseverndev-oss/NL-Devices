@@ -1,0 +1,92 @@
+# Spike step 1 — vertical slice: 3 verified blocks composed via TYPED interfaces.
+#
+#   5V ──►[ PowerBlock ]──► 3V3 ──┬──►[ McuBlock ]
+#                                 └──►[ SensorBlock ]   (I2C bus between them)
+#
+# The point: every seam is a typed contract (ElectricPower voltage domain, I2C),
+# not a bare net. This is the moat-relevant property we are testing.
+
+import ElectricPower
+import I2C
+import LDO
+import Capacitor
+import Resistor
+import EEPROM
+
+# --- Block 1: Power. 5V -> 3V3 via an LDO, with in/out decoupling. -----------
+module PowerBlock:
+    power_in = new ElectricPower
+    power_out = new ElectricPower
+
+    regulator = new LDO
+    regulator.output_voltage = 3.3V +/- 2%
+    regulator.max_input_voltage = 6V to 100V
+    regulator.power_in ~ power_in
+    regulator.power_out ~ power_out
+
+    cap_in = new Capacitor
+    cap_out = new Capacitor
+    cap_in.capacitance = 1uF +/- 20%
+    cap_out.capacitance = 10uF +/- 20%
+    cap_in.unnamed[0] ~ power_in.hv
+    cap_in.unnamed[1] ~ power_in.lv
+    cap_out.unnamed[0] ~ power_out.hv
+    cap_out.unnamed[1] ~ power_out.lv
+
+    # Invariant: the rail this block guarantees.
+    assert power_out.voltage within 3.3V +/- 5%
+
+# --- Block 2: MCU (I2C controller side). Decoupling + bus pull-ups. ----------
+module McuBlock:
+    power = new ElectricPower
+    i2c = new I2C
+
+    cap = new Capacitor
+    cap.capacitance = 100nF +/- 20%
+    cap.unnamed[0] ~ power.hv
+    cap.unnamed[1] ~ power.lv
+
+    # I2C reference (voltage domain) is established from this block's rail.
+    i2c.scl.reference ~ power
+    i2c.sda.reference ~ power
+
+    # Pull-ups to the 3V3 rail (the controller terminates the bus).
+    scl_pullup = new Resistor
+    sda_pullup = new Resistor
+    scl_pullup.resistance = 4.7kohm +/- 5%
+    sda_pullup.resistance = 4.7kohm +/- 5%
+    scl_pullup.unnamed[0] ~ i2c.scl.line
+    scl_pullup.unnamed[1] ~ power.hv
+    sda_pullup.unnamed[0] ~ i2c.sda.line
+    sda_pullup.unnamed[1] ~ power.hv
+
+# --- Block 3: Sensor (I2C peripheral, real part = EEPROM). -------------------
+module SensorBlock:
+    power = new ElectricPower
+    i2c = new I2C
+
+    device = new EEPROM
+    device.power ~ power
+    device.i2c ~ i2c
+
+# --- Top level: compose the three blocks over typed power + I2C seams. -------
+module App:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+
+    psu = new PowerBlock
+    mcu = new McuBlock
+    sensor = new SensorBlock
+
+    # Power seam: 5V into the PSU, 3V3 out to both consumers.
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power3v3
+    sensor.power ~ power3v3
+
+    # I2C seam: one bus shared by controller + peripheral.
+    i2c_bus = new I2C
+    i2c_bus.frequency = 400kHz
+    mcu.i2c ~ i2c_bus
+    sensor.i2c ~ i2c_bus

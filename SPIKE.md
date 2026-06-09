@@ -127,7 +127,7 @@ the substrate (or a hybrid).
 | Step | Work | Output |
 |---|---|---|
 | 0 ✅ | Env: install atopile, SKiDL, ngspice; reproduce each tool's hello-world — **DONE, all green** (see [`spike/README.md`](./spike/README.md)) | green baseline |
-| 1 | Implement the 3 blocks + compose, in **atopile** (typed interfaces, `assert` invariants, `ato build`) | `.ato` slice + KiCad/BOM |
+| 1 ✅ | Implement the 3 blocks + compose, in **atopile** (typed interfaces, `assert` invariants, `ato build`) — **DONE** ([`spike/atopile/sensor_node.ato`](./spike/atopile/sensor_node.ato); results in [`spike/README.md`](./spike/README.md)) | `.ato` slice + KiCad/BOM |
 | 2 | Implement the 3 blocks + compose, in **SKiDL** (`@SubCircuit`, `Interface`, `ERC()`, `generate_netlist`) | Python slice + netlist |
 | 3 | Build the **thin seam-checker** (power-domain compat, I²C bus rules, completeness) over each | validator module(s) |
 | 4 | Inject the **3 faults**; confirm each is caught + correct design passes | fault-detection log |
@@ -145,11 +145,20 @@ the substrate (or a hybrid).
   proprietary GPL surface). SKiDL's `skidl.pyspice` mode is consequently N/A.
 - ✅ atopile **part-picker resolves real LCSC parts** (needs network).
 
-**Still open (steps 1–6):**
+**Resolved in Step 1:**
+- ✅ **IC part-picking is NOT automatic** — generic `LDO`/`EEPROM` get "no picker, no
+  footprint" and fall out of the BOM; only passives auto-resolve. Pinning a concrete
+  IC requires a **component definition** (`ato create part`), not an `lcsc_id` on a
+  generic instance. → "verified block w/ real IC" = real per-block work (the
+  part-data moat bites here).
+- ✅ **Typed composition + constraint solving + passive resolution work** end-to-end;
+  typed seams (`SCL`/`SDA`/power rails) land in the netlist.
+
+**Still open (steps 2–6):**
 - **atopile:** scope of `POST_PCB`/`check_design` checks vs. KiCad DRC? (Med)
-  Part-picker coverage for **ICs by parameter**, not just passives? (Low–Med)
+  `i2c-tree`/address checking needs concrete addressed devices (empty without picked ICs).
 - **Cross-cutting (the moat measurement):** does typed-interface checking actually
-  cover our seam errors, or is a **custom seam layer** still required?
+  catch the injected seam faults (step 3–4), or is a **custom seam layer** still required?
 - **Version:** spike used atopile **0.12.5**; pin/upgrade toward **0.14+** (typed-
   interface docs) before building the real blocks.
 - **Licensing reminder:** ngspice is **BSD** (safe to embed); PySpice/KiCad-ERC are
