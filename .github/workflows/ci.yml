@@ -21,6 +21,7 @@ jobs:
       - name: Validator + contract + orchestrator + planner eval
         working-directory: spike
         run: |
+          python3 place.py --selftest    # pure placement, against committed fixture
           python3 seam_validator.py
           python3 block_contract.py --faults
           python3 validator_corpus.py    # adversarial corpus; gates on covered-fault regressions
