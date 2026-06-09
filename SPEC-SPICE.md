@@ -37,7 +37,13 @@ Real `.tran` runs whose results a calculator can't produce directly:
 | Sim | Deck | Measures |
 |---|---|---|
 | `sim_i2c_rise_ns(R, C)` | open-drain line released at t=0, pulled up through R into C (`.ic`+`uic`) | ngspice `.meas` 30%→70% rise time |
-| `sim_rail_droop_v(Vnom, Rout, C, Istep)` | rail = Vnom behind Rout with C decoupling, hit by a load-current `PULSE` | `.meas` minimum rail voltage (droop) |
+| `sim_rail_droop_v(Vnom, Rout, C, Istep)` | rail = Vnom behind a series **inductance** + Rout, with C decoupling, hit by a load-current `PULSE` | `.meas` minimum rail voltage (droop) |
+
+The rail-droop sim's inductance is load-bearing: a real power-distribution network has
+*frequency-dependent* source impedance (low at DC, high for a fast transient), so the
+regulator can't slew quickly and the decoupling cap must supply the charge. Without it,
+an ideal source behind a small resistor holds the rail up regardless of C — which is
+exactly the trap the old theatre fell into.
 
 ngspice is BSD-licensed; we drive the binary directly (`ngspice -b`), no GPLv3 PySpice.
 

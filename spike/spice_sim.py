@@ -89,22 +89,27 @@ def sim_i2c_rise_ns(r_ohms: float, c_pf: float, vcc: float = 3.3) -> float | Non
 
 
 def sim_rail_droop_v(vnom: float, rout_ohms: float, c_uf: float, istep_ma: float,
-                     pulse_ns: float = 200.0) -> float | None:
-    """Rail = ideal Vnom behind output impedance Rout, with c_uf of decoupling. A load
-    pulse of istep_ma for pulse_ns forces the cap to supply charge. Returns the
-    ngspice-measured minimum rail voltage (the droop) in volts."""
+                     pulse_ns: float = 200.0, src_l_uh: float = 1.0) -> float | None:
+    """Rail droop under a *fast* load step. The source (regulator + trace) is modelled
+    with a series inductance `src_l_uh` — its real, frequency-dependent impedance: low
+    at DC (small Rout, good static regulation) but high for a fast transient, so the
+    regulator *cannot* slew quickly and the decoupling cap `c_uf` must supply the
+    charge. That is what makes decoupling matter — without the inductance an ideal
+    source behind a small resistor would (wrongly) hold the rail up regardless of C.
+    Returns the ngspice-measured minimum rail voltage during the pulse, in volts."""
     istep_a = istep_ma / 1000.0
     t0, edge, width = 1e-6, 10e-9, pulse_ns * 1e-9
     stop, step = 3e-6, 1e-9
     deck = (
-        "* rail droop under a load step\n"
+        "* rail droop under a fast load step (inductive source impedance)\n"
         f"Vreg vreg 0 {vnom}\n"
-        f"Rout vreg rail {rout_ohms}\n"
+        f"Lsrc vreg n1 {src_l_uh}u\n"
+        f"Rout n1 rail {rout_ohms}\n"
         f"Cbulk rail 0 {c_uf}u\n"
         f"Iload rail 0 PULSE(0 {istep_a:.4f} {t0:.3e} {edge:.3e} {edge:.3e} {width:.3e} 1)\n"
         ".control\n"
         f"tran {step:.3e} {stop:.3e}\n"
-        f"meas tran vmin MIN v(rail) FROM={t0:.3e} TO={(t0 + width + 1e-6):.3e}\n"
+        f"meas tran vmin MIN v(rail) FROM={t0:.3e} TO={(t0 + width):.3e}\n"
         ".endc\n.end\n"
     )
     return _parse_meas(_run_deck(deck), "vmin")
@@ -152,15 +157,16 @@ def selftest() -> bool:
     ok &= weak_ok
     print(f"  [{'ok' if weak_ok else 'FAIL'}] weak 47kΩ pull-up rise {weak:.0f}ns > 300ns (caught)")
 
-    # 4) LIVE: rail droop — adequate decoupling holds, under-decoupling sags out of tol
-    good = sim_rail_droop_v(3.3, 0.1, 100.0, 200)        # 100µF bulk
+    # 4) LIVE: rail droop under a fast 300mA step — adequate decoupling holds, a tiny
+    #    cap sags out of tolerance (the inductive source can't supply the transient).
+    good = sim_rail_droop_v(3.3, 0.05, 100.0, 300)       # 100µF bulk
     good_ok = good is not None and good >= 3.3 * 0.95
     ok &= good_ok
     print(f"  [{'ok' if good_ok else 'FAIL'}] 100µF rail droop floor {good:.3f}V ≥ 3.135V (holds)")
-    bad = sim_rail_droop_v(3.3, 0.1, 0.1, 200)           # only 100nF
+    bad = sim_rail_droop_v(3.3, 0.05, 0.047, 300)        # only 47nF — far too little
     bad_ok = bad is not None and bad < 3.3 * 0.95
     ok &= bad_ok
-    print(f"  [{'ok' if bad_ok else 'FAIL'}] 100nF rail droop floor {bad:.3f}V < 3.135V (caught)")
+    print(f"  [{'ok' if bad_ok else 'FAIL'}] 47nF rail droop floor {bad:.3f}V < 3.135V (caught)")
 
     print("-" * 70)
     print("SELFTEST:", "PASS — real ngspice sims have teeth and match the analytic limit"
