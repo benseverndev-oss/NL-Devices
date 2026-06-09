@@ -119,7 +119,7 @@ Append after the `toolchain` job:
       - name: ato build sensor_node (network part-pick — the fragile step)
         working-directory: spike/atopile
         run: |
-          ato build sensor_node
+          ato build -b sensor_node          # -b selects the build target (see ato.yaml / setup.sh)
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
       - name: Upload unrouted board as fixture
         uses: actions/upload-artifact@v4
@@ -269,6 +269,16 @@ def write_positions(text: str, fps: list[FP]) -> str:
         a, b = p.at_span
         text = text[:a] + f"(at {p.x:.4f} {p.y:.4f} {p.rot})" + text[b:]
     return text
+
+
+def place_board(pcb: Path) -> str:
+    """End-to-end: read an unrouted .kicad_pcb, place its footprints, return the
+    placed text. The one entrypoint route.py calls — keeps the parse→place→write
+    sequence in one place (DRY)."""
+    text = pcb.read_text(encoding="utf-8")
+    fps = parse_footprints(text)
+    place(fps)                      # mutates fps in place
+    return write_positions(text, fps)
 ```
 
 - [ ] **Step 5: Implement `selftest()` — the contract**
@@ -328,8 +338,10 @@ In `ci.yml`, under the `spike` job's "Validator + contract + …" step, add a li
 
 **Files:**
 - Create: `spike/route.py` (parsers section only this task)
-- Create: `spike/fixtures/sensor_node/freerouting.log`, `drc.json`, `gerbers.txt` (hand-authored samples)
+- Create: `spike/fixtures/sensor_node/freerouting.ok.txt`, `freerouting.bad.txt`, `drc.json`, `gerbers.txt` (hand-authored samples)
 - Modify: `.github/workflows/ci.yml` (`spike` job)
+
+> **gitignore gotcha:** `spike/.gitignore:11` is `*.log`, which would silently un-track any `*.log` fixture. The committed parser fixtures therefore use `.txt`, **not** `.log`. (The pipeline's own runtime `build/route/freerouting.log` in Task 4 is fine — it lives under the ignored `build/` and is an artifact, not a committed fixture.)
 
 - [ ] **Step 1: Hand-author the parser fixtures** (cheap text — author by hand, no tools)
 
@@ -341,7 +353,7 @@ In `ci.yml`, under the `spike` job's "Validator + contract + …" step, add a li
   "coordinate_units": "mm" }
 ```
 
-`spike/fixtures/sensor_node/freerouting.log` — a few lines incl. the completion summary freerouting prints, e.g. a line containing `Routing ... 100% ... incomplete: 0` (adjust to the real string seen in Task 4's first run; for now encode the success and a failure sample as two files `freerouting.ok.log` / `freerouting.bad.log`).
+`spike/fixtures/sensor_node/freerouting.ok.txt` / `freerouting.bad.txt` — a few lines each incl. the completion summary freerouting prints, e.g. a line containing `Routing ... 100% ... incomplete: 0` for the ok sample and `incomplete: 3` for the bad one (adjust to the real string seen in Task 4's first run). `.txt`, not `.log`, per the gitignore gotcha above.
 
 `spike/fixtures/sensor_node/gerbers.txt` — the expected Gerber file list (one per line: `*-F_Cu.gbr`, `*-B_Cu.gbr`, `*-F_Mask.gbr`, …, `*-Edge_Cuts.gbr`, `*.drl`).
 
@@ -388,9 +400,9 @@ REQUIRED_LAYERS = {"F_Cu", "B_Cu", "Edge_Cuts", "drill"}
 
 def selftest() -> bool:
     ok = True; print("route parsers self-test\n" + "-" * 60)
-    u0 = parse_unrouted((FIX / "freerouting.ok.log").read_text())
+    u0 = parse_unrouted((FIX / "freerouting.ok.txt").read_text())
     print(f"  [{'ok' if u0 == 0 else 'FAIL'}] ok log -> 0 unrouted"); ok &= (u0 == 0)
-    ub = parse_unrouted((FIX / "freerouting.bad.log").read_text())
+    ub = parse_unrouted((FIX / "freerouting.bad.txt").read_text())
     print(f"  [{'ok' if ub > 0 else 'FAIL'}] bad log -> {ub} unrouted (>0)"); ok &= (ub > 0)
     v = parse_drc((FIX / "drc.json").read_text())
     print(f"  [{'ok' if v == [] else 'FAIL'}] clean drc.json -> 0 violations"); ok &= (v == [])
@@ -441,7 +453,7 @@ def _run(cmd, **kw) -> str:
         raise RuntimeError(f"{cmd[0]} failed ({p.returncode}):\n{p.stderr[-2000:]}")
     return p.stdout
 
-def ato_build(atodir: Path) -> Path: ...      # `ato build sensor_node`; return the .kicad_pcb path
+def ato_build(atodir: Path) -> Path: ...      # `ato build -b sensor_node`; return the .kicad_pcb path
 def set_netclass(pcb: Path) -> None: ...       # ensure a default net class @ 0.2/0.2 + via, so DRC==freerouting rules
 def export_dsn(pcb: Path, dsn: Path) -> None: ...
 def run_freerouting(dsn: Path, ses: Path) -> str: ...   # `java -jar freerouting.jar -de DSN -do SES`; return log
@@ -459,8 +471,7 @@ def pipeline(atodir: Path, workdir: Path) -> int:
     import place
     pcb = ato_build(atodir)
     placed = workdir / "placed.kicad_pcb"
-    placed.write_text(place.write_positions(pcb.read_text(),
-                      (lambda t: (place.place(fps := place.parse_footprints(t)) , fps)[1])(pcb.read_text())))
+    placed.write_text(place.place_board(pcb))      # parse → place → write, one call (Task 2)
     set_netclass(placed)
     dsn, ses, routed = workdir / "b.dsn", workdir / "b.ses", workdir / "routed.kicad_pcb"
     export_dsn(placed, dsn)
@@ -476,7 +487,7 @@ def pipeline(atodir: Path, workdir: Path) -> int:
     return 0 if ok else 1
 ```
 
-(Refactor the inline lambda into a clean `place_board(pcb)` helper in `place.py` — DRY.)
+(`place.place_board` is the helper added in Task 2 Step 4 — parse → place → write in one call.)
 
 - [ ] **Step 4: Grow the `route` job** — replace Task 1's "Upload unrouted board" tail with the full pipeline + artifact upload, hard-gating on the pipeline exit code:
 
@@ -492,7 +503,7 @@ def pipeline(atodir: Path, workdir: Path) -> int:
           path: spike/build/route/**
 ```
 
-- [ ] **Step 5: Commit + push + watch the `route` job.** Iterate: download `route-artifacts`, inspect `freerouting.log`/`drc.json`, fix flags/netclass/placement, repeat until `unrouted=0 drc_violations=0`. **Update the Task 3 hand-authored `freerouting.ok.log`/`drc.json` fixtures to match the real strings** once seen, so the offline parser tests track reality.
+- [ ] **Step 5: Commit + push + watch the `route` job.** Iterate: download `route-artifacts`, inspect `freerouting.log`/`drc.json`, fix flags/netclass/placement, repeat until `unrouted=0 drc_violations=0`. **Update the Task 3 hand-authored `freerouting.ok.txt`/`drc.json` fixtures to match the real strings** once seen, so the offline parser tests track reality.
 
 ---
 
