@@ -36,6 +36,9 @@ jobs:
         run: |
           python3 electrical.py              # analytic LDO dropout-margin check (has teeth)
           python3 spice_sim.py --selftest    # REAL .tran: I2C rise + rail droop; cross-checks the analytic limit
+      - name: Fab export — package build + dry-run JLCPCB order (offline)
+        working-directory: spike
+        run: python3 fab_export.py --selftest  # BOM/CPL/Gerber/drill + validated order (never submits)
 
   toolchain:
     name: Pinned atopile install (0.12.5 / Python 3.13)
