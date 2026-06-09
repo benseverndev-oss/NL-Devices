@@ -1,6 +1,5 @@
-Freerouting 2.1.0 headless autorouter
-Loading DSN file: verified.dsn
-Routing pass 1 of 1...
-Routing 93% complete.
-Total connections: 42  routed: 39  incomplete: 3
-Autorouting finished with unconnected items. Writing SES file: verified.ses
+INFO   Freerouting v2.1.0 (build-date: 2025-04-12)
+INFO   Settings were loaded from freerouting.json
+INFO   Auto-router pass #1 was completed in 0.76 seconds with the score of 903.51 (5 unrouted).
+INFO   Auto-router pass #2 was completed in 0.21 seconds with the score of 941.46 (3 unrouted).
+    "incomplete_count": 3

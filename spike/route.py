@@ -22,16 +22,19 @@ FIX = HERE / "fixtures" / "verified"
 # ---------------------------------------------------------------------------
 
 def parse_unrouted(freerouting_log: str) -> int:
-    """Return the count of unrouted/incomplete connections freerouting reports.
+    """Return the count of unrouted connections freerouting reports.
 
-    Scans for 'incomplete: N', 'N incomplete', or 'unrouted: N' (case-insensitive).
-    Raises ValueError if no completion summary is found.
+    freerouting 2.x emits an authoritative JSON `"incomplete_count": N` summary, plus
+    per-pass `(N unrouted)` lines (dropped once it reaches 0). Prefer incomplete_count;
+    fall back to the LAST per-pass count (a conservative over-estimate). Raises if neither.
     """
-    for pat in (
-        r"incomplete[:\s]+(\d+)",
-        r"(\d+)\s+incomplete",
-        r"unrouted[:\s]+(\d+)",
-    ):
+    m = re.search(r'"?incomplete_count"?\s*:\s*(\d+)', freerouting_log)
+    if m:
+        return int(m.group(1))
+    passes = re.findall(r"\((\d+)\s+unrouted\)", freerouting_log, re.I)
+    if passes:
+        return int(passes[-1])
+    for pat in (r"incomplete[:\s]+(\d+)", r"unrouted[:\s]+(\d+)"):
         m = re.search(pat, freerouting_log, re.I)
         if m:
             return int(m.group(1))
