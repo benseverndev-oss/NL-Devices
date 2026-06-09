@@ -35,5 +35,8 @@ is the interface.
 - **[SPEC-VALIDATOR-DEPTH.md](./SPEC-VALIDATOR-DEPTH.md)** — deepening the validator
   (3→6 checks) and an adversarial corpus that **measures the false-negative rate**
   (33% over known-bad designs), with the missing checks named as the roadmap (GAPS §4c).
+- **[SPEC-SPICE.md](./SPEC-SPICE.md)** — replacing the "Ohm's-law-in-a-SPICE-costume"
+  electrical gate with an honest analytic dropout check + **genuine ngspice `.tran`
+  sims** (I2C rise time, rail droop) that cross-check the analytic limit (GAPS §3/§5.6).
 
 > Status: early scoping / pre-build.

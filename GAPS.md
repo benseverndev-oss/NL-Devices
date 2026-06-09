@@ -61,7 +61,12 @@ electrical leg is a placeholder.
 > **Update (since this audit):** rows 1–2 are now addressed — `spike/llm_client.py`
 > wires a real `claude-opus-4-8` planner into the seam and `run()` implements the
 > actual feedback→retry loop, evidenced by `spike/eval_planner.py` (see §5 item 1).
-> The electrical-leg row (3) and the structural gaps in §4 still stand.
+> **Row 3 (electrical theatre) is now addressed too** ([`SPEC-SPICE.md`](./SPEC-SPICE.md)):
+> the Ohm's-law-in-a-SPICE-costume decks are gone. `electrical.py` runs one **honestly
+> analytic** check (LDO dropout margin) on the gate path, and `spike/spice_sim.py` adds
+> **genuine ngspice `.tran` sims** (I2C RC rise time, rail droop under a load step) whose
+> `--selftest` cross-checks the analytic `0.8473·R·C` limit to <5% and proves teeth both
+> ways — run live in CI. The structural gaps in §4 still stand.
 
 ---
 
@@ -197,9 +202,13 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    named. CI gates on covered-fault regressions. **Still open:** a *third-party*
    (field-captured) corpus, and building the named FN checks — `design-level-part-rating`
    (rail voltage vs the part's ground-truth datasheet rating) joins this to `verify_parts`.
-6. **Replace SPICE theater with a real model (🟠).** A genuine LDO/dropout + bus-
-   capacitance simulation, or drop the ngspice framing and call the checks what they
-   are (analytic limits).
+6. ✅ **DONE — replaced the SPICE theatre** ([`SPEC-SPICE.md`](./SPEC-SPICE.md)). Did
+   both: the Ohm's-law decks are deleted; `electrical.py` runs an **honestly analytic**
+   LDO dropout-margin check on the gate path, and `spike/spice_sim.py` adds **real
+   ngspice `.tran` sims** (I2C rise time + rail droop under a load step) that have teeth
+   and whose `--selftest` cross-checks the analytic `0.8473·R·C` limit to <5% (run live
+   in CI). **Still open:** wire the proven droop sim into the gate (needs per-rail
+   decoupling-cap data) and a load/thermal-dependent behavioural LDO model.
 7. **Spike one fab-export path (🟠).** Gerbers + a single fab order API — smallest
    step toward the "eventually" tail and a prerequisite for the assembly-order
    business model.
