@@ -27,6 +27,10 @@ class PowerRail:
     sinks: list[tuple[str, float, float]] = field(default_factory=list)  # (block, req_v, tol)
     source_capacity_ma: float | None = None   # max current the source can deliver (None = unmodeled)
     loads: list[tuple[str, float]] = field(default_factory=list)  # (block, current_ma) drawn from this rail
+    # (block, gt_vmin, gt_vmax): each sink's GROUND-TRUTH datasheet operating range,
+    # so the rail can be checked against what the real part tolerates — not the
+    # (possibly wrong) hand-typed YAML. None on a bound = that side is open.
+    part_ratings: list[tuple[str, float | None, float | None]] = field(default_factory=list)
 
 
 @dataclass
@@ -178,12 +182,32 @@ def check_i2c_bus_capacitance(d: Design) -> list[str]:
     return errs
 
 
+def check_part_rail_rating(d: Design) -> list[str]:
+    """Join to the ground-truth part DB: the rail voltage a part *actually sees* must
+    fall within that part's datasheet operating range. Catches a part placed on a
+    wrong-voltage rail even when the block's hand-typed YAML claims it's fine — the
+    headline false negative measured in the validator corpus. Fires only where a
+    ground-truth range was attached (see block_contract.build_design with a snapshot)."""
+    errs = []
+    for r in d.rails:
+        lo, hi = _interval(r.source_v, r.source_tol)   # the rail's worst-case excursion
+        for block, vmin, vmax in r.part_ratings:
+            if vmin is not None and lo < vmin:
+                errs.append(f"RATING: rail '{r.name}' ≥{lo:.3f}V drops below '{block}' "
+                            f"part minimum {vmin:.3f}V (ground truth)")
+            if vmax is not None and hi > vmax:
+                errs.append(f"RATING: rail '{r.name}' ≤{hi:.3f}V exceeds '{block}' "
+                            f"part maximum {vmax:.3f}V (ground truth)")
+    return errs
+
+
 CHECKS = [("power-domain", check_power_domains),
           ("i2c-pullups", check_i2c_pullups),
           ("i2c-address", check_i2c_addresses),
           ("current-budget", check_current_budget),
           ("i2c-reserved-addr", check_i2c_reserved_addresses),
-          ("i2c-bus-timing", check_i2c_bus_capacitance)]
+          ("i2c-bus-timing", check_i2c_bus_capacitance),
+          ("part-rail-rating", check_part_rail_rating)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:

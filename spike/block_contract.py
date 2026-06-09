@@ -79,7 +79,24 @@ def load_blocks(blocks_dir: Path = HERE / "blocks") -> dict[str, BlockSpec]:
 
 
 # ---- compose: authored blocks + slice -> a validator Design -----------------
-def build_design(slice_doc: dict, blocks: dict[str, BlockSpec]) -> sv.Design:
+def _gt_voltage_range(block: BlockSpec, snapshot: dict | None):
+    """Ground-truth operating-voltage range (vmin, vmax) for a block's bound part,
+    from the part-data snapshot. (None, None) when there's no part or no rating."""
+    if not snapshot:
+        return None
+    lcsc = (block.bound_part or {}).get("lcsc")
+    rec = snapshot.get(lcsc) if lcsc else None
+    op = (rec.attributes.get("operating_voltage_v") if rec else None)
+    if not op:
+        return None
+    return (op.get("min"), op.get("max"))
+
+
+def build_design(slice_doc: dict, blocks: dict[str, BlockSpec],
+                 snapshot: dict | None = None) -> sv.Design:
+    """Compose a validator Design. If a part-data `snapshot` is given, each power
+    sink is annotated with its part's ground-truth operating range, enabling the
+    `part-rail-rating` check (rail voltage vs the real datasheet limits)."""
     insts = slice_doc["instances"]                       # inst -> block id
 
     def resolve(ref: str) -> tuple[str, dict]:           # "inst.port" -> (inst, port-spec)
@@ -95,14 +112,18 @@ def build_design(slice_doc: dict, blocks: dict[str, BlockSpec]) -> sv.Design:
             _, sp = resolve(r["source_from"])
             sv_v, sv_tol = sp["voltage"], sp["tolerance"]
             capacity = sp.get("max_current_ma")          # the source port's deliverable current
-        sinks, loads = [], []
+        sinks, loads, ratings = [], [], []
         for ref in r.get("sinks", []):
             inst, sp = resolve(ref)
             sinks.append((inst, sp["voltage"], sp["tolerance"]))
             if "current_ma" in sp:                       # the sink's draw, for the current budget
                 loads.append((inst, sp["current_ma"]))
+            rng = _gt_voltage_range(blocks[insts[inst]], snapshot)
+            if rng is not None:                          # ground-truth datasheet range for this part
+                ratings.append((inst, rng[0], rng[1]))
         rails.append(sv.PowerRail(r["name"], sv_v, sv_tol, sinks=sinks,
-                                  source_capacity_ma=capacity, loads=loads))
+                                  source_capacity_ma=capacity, loads=loads,
+                                  part_ratings=ratings))
 
     buses = []
     for b in slice_doc.get("buses", []):

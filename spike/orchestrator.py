@@ -184,15 +184,17 @@ def run(spec, lib, planner: Planner, *, max_attempts: int = 3):
     (plan, design, res, ok, attempts). `design` is None if a plan couldn't even be
     assembled (e.g. the planner named an out-of-catalog part) — itself a rejection."""
     import electrical
+    import partdb
+    snapshot = partdb.load_snapshot()            # ground truth for the part-rail-rating check
     uses_feedback = _accepts_feedback(planner)
     feedback = None
     plan, design, res, ok, attempt = {"instances": {}}, None, {}, False, 0
     for attempt in range(1, max_attempts + 1):
         try:
             plan = planner.plan(spec, lib, feedback) if uses_feedback else planner.plan(spec, lib)
-            design = bc.build_design(plan, lib)
-            res = sv.validate(design)                                  # topology seams
-            res["electrical"] = electrical.check_electrical(plan, lib)  # ngspice gate
+            design = bc.build_design(plan, lib, snapshot)             # ground-truth-aware
+            res = sv.validate(design)                                  # topology + ratings seams
+            res["electrical"] = electrical.check_electrical(plan, lib)  # analytic dropout gate
         except Exception as e:                       # malformed/hallucinated plan -> reject
             design, res = None, {"assembly": [f"plan could not be assembled: {e}"]}
         ok = design is not None and not any(res.values())

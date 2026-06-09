@@ -113,15 +113,14 @@ def _uncov_floating_power() -> sv.Design:
     return d
 
 
-def _uncov_controller_no_address_space() -> sv.Design:
-    d = good_baseline(); d.name = "uncov_two_buses_shared_pullup"
-    # second bus declared with no pull-up provider AND no pull-up resistor value:
-    # i2c-pullups fires on provider, but a bus with provides_pullups=True yet an
-    # absurdly-high implied pull-up isn't modelled — here we model a subtler gap:
-    # a peripheral whose 3.3V rating is fine but which is a 5V-only part in reality
-    # (no abs-max/part-rating check at the *design* level — verify_parts checks the
-    # part in isolation, not the rail it actually sees).
-    d.rails[1].sinks.append(("hv_only_sensor", 3.3, 0.05))   # claims 3.3V-ok; really 5V-only
+def _bad_part_rail_rating() -> sv.Design:
+    d = good_baseline(); d.name = "bad_part_rail_rating"
+    # a 5V-only part placed on the 3.3V rail. Its block YAML may claim 'voltage: 3.3'
+    # (so power-domain passes), but the part's GROUND-TRUTH datasheet range is 4.5–5.5V.
+    # build_design(..., snapshot) attaches that range; check_part_rail_rating then sees
+    # the 3.3V rail is below the part's real minimum. (Was a measured FN before #post.)
+    d.rails[1].sinks.append(("hv_only_sensor", 3.3, 0.05))
+    d.rails[1].part_ratings.append(("hv_only_sensor", 4.5, 5.5))   # from the part-data snapshot
     d.buses[0].nodes.append(sv.I2CNode("hv_only_sensor", "peripheral", address=0x52))
     return d
 
@@ -137,13 +136,12 @@ CORPUS = [
     {"build": _bad_overcurrent,    "kind": "bad_covered", "expect": {"current-budget"},    "note": "955mA on 800mA rail"},
     {"build": _bad_reserved_address,"kind": "bad_covered","expect": {"i2c-reserved-addr"}, "note": "address 0x7A reserved"},
     {"build": _bad_bus_timing,     "kind": "bad_covered", "expect": {"i2c-bus-timing"},    "note": "47kΩ pull-up @400kHz"},
+    {"build": _bad_part_rail_rating,"kind": "bad_covered","expect": {"part-rail-rating"},  "note": "5V-only part on the 3.3V rail (vs ground truth)"},
     # bad, UNCOVERED (measured false negatives — the honest roadmap)
     {"build": _uncov_multimaster,  "kind": "bad_uncovered", "missing": "i2c-multimaster",
      "note": "two controllers on one bus — no multi-master check"},
     {"build": _uncov_floating_power,"kind": "bad_uncovered", "missing": "power-connectivity",
      "note": "active device on no rail — no 'every block powered' check"},
-    {"build": _uncov_controller_no_address_space, "kind": "bad_uncovered", "missing": "design-level-part-rating",
-     "note": "part rated for the rail in YAML but wrong in reality — no rail-vs-ground-truth check"},
 ]
 
 # Faults not even representable in today's model — listed so the roadmap is complete.
