@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 .venv/
+freerouting.jar          # CI downloads this into the route job; never commit it

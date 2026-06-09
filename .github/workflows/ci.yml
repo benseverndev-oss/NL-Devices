@@ -53,8 +53,6 @@ jobs:
   route:
     name: Autoroute → routed copper (sensor_node)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write          # so the one-time fetch step can commit models back
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,120 +60,25 @@ jobs:
       - name: Install pinned atopile toolchain
         run: bash scripts/setup.sh
       - name: Install KiCad 9 + Java (route backend)
+        # Pinned KiCad 9 (kicad-cli + pcbnew for the Specctra round-trip / DRC / Gerber
+        # export in Task 4) and Java for headless freerouting. Pins are linted by
+        # scripts/check_toolchain.py against KICAD_VERSION / FREEROUTING_VERSION.
         run: |
           sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends kicad default-jre
           kicad-cli version
-      - name: PROBE kicad-cli capabilities (learn the surface)
-        run: |
-          echo "== pcb export ==" ; kicad-cli pcb export --help || true
-          echo "== pcb drc ==" ;   kicad-cli pcb drc --help || true
-          # pcbnew ships against the system python (KiCad's), not the setup-python 3.13.
-          # Probe with the system interpreter; never red-fail this exploratory step.
-          echo "== pcbnew (system python) =="
-          /usr/bin/python3 -c "import pcbnew; print('pcbnew', pcbnew.GetBuildVersion()); print([a for a in dir(pcbnew) if 'pecctra' in a.lower() or 'specctra' in a.lower() or 'SES' in a or 'DSN' in a or 'Dsn' in a or 'Ses' in a])" || true
       - name: Fetch pinned freerouting
         run: |
           curl -fL -o freerouting.jar \
             "https://github.com/freerouting/freerouting/releases/download/v2.1.0/freerouting-2.1.0.jar"
           java -jar freerouting.jar --version || java -jar freerouting.jar -h || true
-      - name: PROBE ato create surface (learn the non-interactive fetch)
-        # TEMPORARY scaffolding (Task 1, Option 3). Removed once models are committed.
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          echo "== ato create --help =="           ; ato create --help || true
-          echo "== ato create part --help =="      ; ato create part --help || true
-          echo "== ato create component --help ==" ; ato create component --help || true
-          echo "== ato build --help =="            ; ato build --help || true
-      - name: FETCH real 3D models into committed part dirs (scratch project)
-        # TEMPORARY scaffolding (Task 1, Option 3). For each LCSC code, fetch the part
-        # (symbol+footprint+MODEL) into a throwaway atopile project via the
-        # non-interactive `ato create part -s C<code> -a`, then copy ONLY the generated
-        # *.step/*.STEP into the matching committed part dir under its expected name.
-        # Never touches the committed .ato/.kicad_mod/.kicad_sym.
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
-          REPO="$PWD"
-          PARTS="$REPO/spike/atopile/elec/src/parts"
-
-          # dir|LCSC|expected-model-filename  (the exact name the committed .ato references)
-          MAP="
-          Advanced_Monolithic_Systems_AMS1117_3_3|C6186|SOT-223-4P_L6.5-W3.5-H1.6-LS7.0-P2.30.step
-          Microchip_Tech_AT24C256C_SSHL_T|C6482|SOIC-8_L4.9-W3.9-H1.7-LS6.0-P1.27.STEP
-          STMicroelectronics_STM32F103C8T6|C8734|LQFP-48_L7.0-W7.0-H1.4-LS9.0-P0.50.step
-          Samsung_Electro_Mechanics_CL05A105KA5NQNC|C52923|C0402_L1.0-W0.5-H0.5.step
-          Samsung_Electro_Mechanics_CL10A106KP8NNNC|C19702|C0603_L1.6-W0.8-H0.8.step
-          Samsung_Electro_Mechanics_CL10A475KO8NNNC|C19666|C0603_L1.6-W0.8-H0.8.step
-          Texas_Instruments_LM75AIMX_NOPB|C477979|SOIC-8_L4.9-W3.9-H1.7-LS6.0-P1.27.STEP
-          UNI_ROYAL_0402WGF1002TCE|C25744|R0402_L1.0-W0.5-H0.4.step
-          UNI_ROYAL_0402WGF4701TCE|C25900|R0402_L1.0-W0.5-H0.4.step
-          UNI_ROYAL_0603WAF1002T5E|C25804|R0603.STEP
-          YAGEO_CC0603KRX7R9BB104|C14663|C0603_L1.6-W0.8-H0.8.step
-          "
-
-          # Throwaway atopile project so the fetch can't clobber committed part files.
-          SCRATCH="$(mktemp -d)"
-          mkdir -p "$SCRATCH/elec/src"
-          cat > "$SCRATCH/ato.yaml" <<'YAML'
-          requires-atopile: ">=0.12.5"
-          builds:
-            scratch:
-              entry: elec/src/scratch.ato:Scratch
-          YAML
-          printf 'module Scratch:\n    pass\n' > "$SCRATCH/elec/src/scratch.ato"
-
-          echo "$MAP" | while IFS='|' read -r DIR CODE MODEL; do
-            [ -z "${DIR:-}" ] && continue
-            echo "==== fetching $CODE -> $DIR (model: $MODEL) ===="
-            ( cd "$SCRATCH" && ato create part -s "$CODE" -a )
-          done
-
-          echo "== scratch tree after fetch =="
-          find "$SCRATCH" -type f \( -iname '*.step' -o -iname '*.ato' -o -iname '*.kicad_mod' \) | sort
-
-          # Copy each generated model into its committed part dir under the expected name.
-          echo "$MAP" | while IFS='|' read -r DIR CODE MODEL; do
-            [ -z "${DIR:-}" ] && continue
-            DEST="$PARTS/$DIR/$MODEL"
-            # atopile names the generated .step from package dims; find the one whose
-            # basename matches the expected MODEL, else fall back to any .step in the
-            # part subdir that easyeda created for this manufacturer/partno.
-            SRC="$(find "$SCRATCH" -type f -iname "$MODEL" | head -n1 || true)"
-            if [ -z "$SRC" ]; then
-              echo "WARN: exact-name '$MODEL' not found in scratch; listing all .step:"
-              find "$SCRATCH" -type f -iname '*.step' | sort
-              echo "ERROR: could not locate model for $CODE ($MODEL)"; exit 1
-            fi
-            cp "$SRC" "$DEST"
-            echo "  copied $(basename "$SRC")  ->  $DEST  ($(stat -c%s "$DEST") bytes)"
-          done
-
-          echo "== committed part dirs now contain (.step) =="
-          find "$PARTS" -type f \( -iname '*.step' \) -printf '%p  %s bytes\n' | sort
-      - name: ato build sensor_node (now with committed-into-place 3D models)
+      - name: ato build sensor_node (reproducible — 3D models committed)
+        # The per-part 3D models are committed under elec/src/parts/**, so this build
+        # is reproducible with no network model fetch (only the LCSC part-pick hits the
+        # network). Produces the unrouted .kicad_pcb the routing pipeline (Task 4) consumes.
         working-directory: spike/atopile
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b sensor_node
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
-      - name: Commit fetched models + board fixture back to the branch (one-time)
-        if: github.event_name == 'push'
-        # TEMPORARY scaffolding (Task 1, Option 3): the sandbox can't pull CI artifacts
-        # (Azure blob is unreachable from there), so CI commits the fetched 3D models +
-        # the unrouted board fixture straight back to the branch. [skip ci] stops this
-        # commit from re-triggering CI. Removed (with the fetch steps) in the follow-up.
-        run: |
-          set -euo pipefail
-          mkdir -p spike/fixtures/sensor_node
-          cp spike/atopile/elec/layout/sensor_node/sensor_node.kicad_pcb \
-             spike/fixtures/sensor_node/sensor_node.kicad_pcb
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          find spike/atopile/elec/src/parts -type f \( -iname '*.step' -o -iname '*.STEP' \) \
-            -exec git add -f {} +
-          git add -f spike/fixtures/sensor_node/sensor_node.kicad_pcb
-          echo "== staged ==" ; git status --short
-          git commit -m "Commit fetched 3D models + sensor_node board fixture [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
