@@ -126,7 +126,7 @@ the substrate (or a hybrid).
 
 | Step | Work | Output |
 |---|---|---|
-| 0 | Env: install atopile, SKiDL, **ngspice shared lib** + PySpice; reproduce each tool's hello-world | green baseline |
+| 0 ✅ | Env: install atopile, SKiDL, ngspice; reproduce each tool's hello-world — **DONE, all green** (see [`spike/README.md`](./spike/README.md)) | green baseline |
 | 1 | Implement the 3 blocks + compose, in **atopile** (typed interfaces, `assert` invariants, `ato build`) | `.ato` slice + KiCad/BOM |
 | 2 | Implement the 3 blocks + compose, in **SKiDL** (`@SubCircuit`, `Interface`, `ERC()`, `generate_netlist`) | Python slice + netlist |
 | 3 | Build the **thin seam-checker** (power-domain compat, I²C bus rules, completeness) over each | validator module(s) |
@@ -138,16 +138,23 @@ the substrate (or a hybrid).
 
 ## 8. Open unknowns to resolve in-spike (flagged by research)
 
-- **atopile:** does `ato build` emit a **standalone netlist** artifact or only the
-  KiCad PCB? (Med) Scope of `POST_PCB` checks vs. relying on KiCad DRC? (Med)
+**Resolved in Step 0:**
+- ✅ **atopile emits a standalone netlist** (`divider.net`) + `.kicad_pcb` + BOM + reports.
+- ✅ **PySpice is unusable** (v1.5 incompatible with ngspice 42, both shared & subprocess
+  paths). **Decision: drive `ngspice` binary directly** (BSD; keeps SPICE out of the
+  proprietary GPL surface). SKiDL's `skidl.pyspice` mode is consequently N/A.
+- ✅ atopile **part-picker resolves real LCSC parts** (needs network).
+
+**Still open (steps 1–6):**
+- **atopile:** scope of `POST_PCB`/`check_design` checks vs. KiCad DRC? (Med)
   Part-picker coverage for **ICs by parameter**, not just passives? (Low–Med)
-- **SKiDL:** exact **PySpice API** method names and **which parts have SPICE models**
-  — verify against `tests/examples/spice-sim-intro/spice-sim-intro.ipynb`. (Med)
-- **Cross-cutting:** does typed-interface checking actually cover our seam errors,
-  or is a **custom seam layer** still required? (This answer *is* the moat measurement.)
+- **Cross-cutting (the moat measurement):** does typed-interface checking actually
+  cover our seam errors, or is a **custom seam layer** still required?
+- **Version:** spike used atopile **0.12.5**; pin/upgrade toward **0.14+** (typed-
+  interface docs) before building the real blocks.
 - **Licensing reminder:** ngspice is **BSD** (safe to embed); PySpice/KiCad-ERC are
   **GPLv3** — keep them as **external tools/harness**, not linked into proprietary core
-  (per RESEARCH.md §4c).
+  (per RESEARCH.md §4c). *Step 0 already followed this by dropping PySpice.*
 
 ---
 

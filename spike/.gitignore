@@ -1,0 +1,12 @@
+# Generated build artifacts & environments — reproducible from sources, not committed
+.venv/
+__pycache__/
+*.pyc
+build/
+elec/
+kicad-symbols/
+lib_sym_cache*
+*_sklib.py
+*.erc
+*.log
+skidl_REPL.*

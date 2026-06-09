@@ -1,0 +1,19 @@
+import Resistor
+import Electrical
+
+module Divider:
+    vin = new Electrical
+    mid = new Electrical
+    gnd = new Electrical
+
+    r_top = new Resistor
+    r_bot = new Resistor
+    r_top.resistance = 10kohm +/- 5%
+    r_bot.resistance = 10kohm +/- 5%
+    r_top.package = "0402"
+    r_bot.package = "0402"
+
+    r_top.unnamed[0] ~ vin
+    r_top.unnamed[1] ~ mid
+    r_bot.unnamed[0] ~ mid
+    r_bot.unnamed[1] ~ gnd
