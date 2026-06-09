@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 HERE = Path(__file__).parent
-FIXTURE = HERE / "fixtures" / "sensor_node" / "sensor_node.kicad_pcb"
+FIXTURE = HERE / "fixtures" / "verified" / "verified.kicad_pcb"
 MARGIN_MM = 5.0          # board-edge keepout around the placement bbox
 SPACING_MM = 2.0         # min edge-to-edge gap between courtyards
 

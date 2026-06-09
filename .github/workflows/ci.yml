@@ -54,8 +54,6 @@ jobs:
   route:
     name: Autoroute → routed copper (verified board)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write          # one-time: commit the re-captured fixture back
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -87,18 +85,3 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b verified
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
-      - name: Re-capture the verified board fixture (one-time)
-        if: github.event_name == 'push'
-        # TEMPORARY: the sandbox can't pull CI artifacts, so commit the unrouted verified
-        # board back as the routing fixture. [skip ci] avoids re-triggering. Stripped next.
-        run: |
-          set -euo pipefail
-          mkdir -p spike/fixtures/verified
-          cp spike/atopile/elec/layout/verified/verified.kicad_pcb \
-             spike/fixtures/verified/verified.kicad_pcb
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f spike/fixtures/verified/verified.kicad_pcb
-          echo "== staged ==" ; git status --short
-          git commit -m "Re-capture verified board fixture (LDO+EEPROM+I2C) [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
