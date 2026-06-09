@@ -12,7 +12,9 @@ ports:
     role: sink
     voltage: 3.3
     tolerance: 0.05
+    current_ma: 20               # typical MCU draw
   i2c:
     type: i2c
     role: controller
     provides_pullups: true       # this block terminates the bus
+    pullup_ohms: 4700            # SCL/SDA pull-up value

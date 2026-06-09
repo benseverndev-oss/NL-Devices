@@ -32,7 +32,9 @@ class I2CNode:
     block: str
     role: str                # 'controller' | 'peripheral'
     provides_pullups: bool = False
-    address: int | None = None   # 7-bit address for peripherals
+    address: int | None = None   # 7-bit address (assigned from the range below)
+    addr_base: int | None = None # lowest strappable address
+    addr_bits: int = 0           # number of address pins -> range = 2**addr_bits
 
 
 @dataclass
@@ -74,12 +76,32 @@ def check_i2c_pullups(d: Design) -> list[str]:
     return errs
 
 
+def assign_addresses(d: Design) -> None:
+    """Assign each peripheral a distinct address from its strappable range.
+    Leaves address=None if the bus has run out of space (caught by the check)."""
+    for b in d.buses:
+        used = {n.address for n in b.nodes if n.address is not None}
+        for n in b.nodes:
+            if n.role != 'peripheral' or n.addr_base is None or n.address is not None:
+                continue
+            for a in range(n.addr_base, n.addr_base + (1 << n.addr_bits)):
+                if a not in used:
+                    n.address = a
+                    used.add(a)
+                    break
+
+
 def check_i2c_addresses(d: Design) -> list[str]:
     errs = []
     for b in d.buses:
         seen: dict[int, str] = {}
         for n in b.nodes:
-            if n.role != 'peripheral' or n.address is None:
+            if n.role != 'peripheral':
+                continue
+            if n.address is None:        # range exhausted during assignment
+                errs.append(f"I2C: bus '{b.name}' address space exhausted for "
+                            f"'{n.block}' (range 0x{n.addr_base:02X}.."
+                            f"0x{n.addr_base + (1 << n.addr_bits) - 1:02X} full)")
                 continue
             if n.address in seen:
                 errs.append(

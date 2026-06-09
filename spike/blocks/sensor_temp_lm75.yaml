@@ -9,5 +9,13 @@ bound_part:
   manufacturer: Texas Instruments
   footprint: SOIC-8
 ports:
-  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05}
-  i2c:   {type: i2c, role: peripheral, address: 0x48, provides_pullups: false}
+  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05, current_ma: 1}
+  i2c:
+    type: i2c
+    role: peripheral
+    address_base: 0x48          # strappable 0x48..0x4F
+    address_bits: 3
+    provides_pullups: false
+codegen:
+  part_instance: lm75
+  address_pins: [A0, A1, A2]

@@ -51,7 +51,9 @@ module McuBlock:
     sda_pullup.unnamed[1] ~ power.hv
     assert power.voltage within 3.3V +/- 5%
 
-# --- sensor_eeprom_24c256 : EEPROM @ 0x50 (AT24C256, C6482) ------------------
+# --- sensor_eeprom_24c256 : EEPROM (AT24C256, C6482) -------------------------
+# Address pins A0/A1/A2 are strapped by the parent (codegen) per the assigned
+# address, so one block serves the whole 0x50..0x57 range.
 module EepromBlock:
     power = new ElectricPower
     i2c = new I2C
@@ -60,28 +62,11 @@ module EepromBlock:
     eeprom.GND ~ power.lv
     eeprom.SCL ~ i2c.scl.line
     eeprom.SDA ~ i2c.sda.line
-    eeprom.A0 ~ power.lv      # 0x50 : all address pins low
-    eeprom.A1 ~ power.lv
-    eeprom.A2 ~ power.lv
     eeprom.WP ~ power.lv
     assert power.voltage within 3.3V +/- 5%
 
-# --- sensor_eeprom_24c256_b : EEPROM @ 0x51 (AT24C256, C6482) ----------------
-module EepromBlockB:
-    power = new ElectricPower
-    i2c = new I2C
-    eeprom = new Microchip_Tech_AT24C256C_SSHL_T_package
-    eeprom.VCC ~ power.hv
-    eeprom.GND ~ power.lv
-    eeprom.SCL ~ i2c.scl.line
-    eeprom.SDA ~ i2c.sda.line
-    eeprom.A0 ~ power.hv      # 0x51 : A0 high
-    eeprom.A1 ~ power.lv
-    eeprom.A2 ~ power.lv
-    eeprom.WP ~ power.lv
-    assert power.voltage within 3.3V +/- 5%
-
-# --- sensor_temp_lm75 : temperature sensor @ 0x48 (LM75A, C477979) -----------
+# --- sensor_temp_lm75 : temperature sensor (LM75A, C477979) ------------------
+# Address pins strapped by the parent per the assigned address (0x48..0x4F).
 module TempBlock:
     power = new ElectricPower
     i2c = new I2C
@@ -90,7 +75,4 @@ module TempBlock:
     lm75.GND ~ power.lv
     lm75.SCL ~ i2c.scl.line
     lm75.SDA ~ i2c.sda.line
-    lm75.A0 ~ power.lv        # 0x48 : all address pins low
-    lm75.A1 ~ power.lv
-    lm75.A2 ~ power.lv
     assert power.voltage within 3.3V +/- 5%

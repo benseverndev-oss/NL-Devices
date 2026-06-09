@@ -34,6 +34,7 @@ class BlockSpec:
     invariants: list = field(default_factory=list)
     tags: list = field(default_factory=list)
     atopile_module: str | None = None
+    codegen: dict | None = None
 
     def port(self, name: str) -> dict:
         if name not in self.ports:
@@ -59,8 +60,8 @@ def _validate_spec(d: dict, src: str) -> None:
         else:  # i2c
             if p.get("role") not in ("controller", "peripheral"):
                 raise ValueError(f"{src}: i2c port '{pname}' bad role {p.get('role')!r}")
-            if p["role"] == "peripheral" and "address" not in p:
-                raise ValueError(f"{src}: i2c peripheral '{pname}' missing 'address' "
+            if p["role"] == "peripheral" and "address_base" not in p:
+                raise ValueError(f"{src}: i2c peripheral '{pname}' missing 'address_base' "
                                  f"(required — atopile cannot infer it)")
 
 
@@ -73,7 +74,7 @@ def load_blocks(blocks_dir: Path = HERE / "blocks") -> dict[str, BlockSpec]:
             id=d["id"], version=d["version"], function=d["function"],
             ports=d["ports"], bound_part=d.get("bound_part"),
             invariants=d.get("invariants", []), tags=d.get("tags", []),
-            atopile_module=d.get("atopile_module"))
+            atopile_module=d.get("atopile_module"), codegen=d.get("codegen"))
     return out
 
 
@@ -105,10 +106,14 @@ def build_design(slice_doc: dict, blocks: dict[str, BlockSpec]) -> sv.Design:
             inst, sp = resolve(ref)
             nodes.append(sv.I2CNode(block=inst, role=sp["role"],
                                     provides_pullups=sp.get("provides_pullups", False),
-                                    address=sp.get("address")))
+                                    address=sp.get("address"),
+                                    addr_base=sp.get("address_base"),
+                                    addr_bits=sp.get("address_bits", 0)))
         buses.append(sv.I2CBus(b["name"], nodes=nodes))
 
-    return sv.Design(slice_doc["name"], rails=rails, buses=buses)
+    design = sv.Design(slice_doc["name"], rails=rails, buses=buses)
+    sv.assign_addresses(design)          # auto-assign distinct I2C addresses
+    return design
 
 
 def load_slice(path: Path, blocks: dict[str, BlockSpec]) -> sv.Design:

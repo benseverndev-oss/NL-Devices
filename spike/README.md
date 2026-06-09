@@ -358,23 +358,26 @@ cd spike && python3 block_contract.py --faults
 
 # Orchestrator + codegen — NL → manufacturable BOM (loop closed) ✅
 
-`orchestrator.py` composes verified blocks from a NL spec and **gates** on the
-seam-validator; `codegen.py` emits a top-level `App.ato` from the slice (over the
-authored block modules in `atopile/verified_lib.ato`) and `ato build`s it.
+`orchestrator.py` composes verified blocks from a NL spec; the **gate** runs
+topology (`seam_validator`) + I2C **auto-addressing/capacity** + an **electrical**
+stage (`electrical.py`, ngspice rail-load & pull-up current); `codegen.py` emits a
+top-level `App.ato` over the authored modules in `atopile/verified_lib.ato` and
+`ato build`s it.
 
 ```
 $ python3 orchestrator.py --build
 SPEC: A microcontroller that logs temperature readings to memory over I2C
-   -> VALIDATION: PASS — design accepted
-   -> CODEGEN+BUILD: manufacturable BOM
-        U1 … AMS1117-3.3      C6186      (LDO)
-        U2 … LM75AIMX/NOPB    C477979    (temp sensor @0x48)
-        U3 … AT24C256C-SSHL-T C6482      (EEPROM @0x50)
+   -> VALIDATION: PASS   -> CODEGEN+BUILD: manufacturable BOM
+        U1 AMS1117-3.3 C6186 · U2 LM75 C477979 (0x48) · U3 AT24C256 C6482 (0x50)
 SPEC: An MCU with three EEPROM memory chips on one I2C bus
-   -> VALIDATION: REJECTED by gate   └─ address 0x50 collision ('s0' and 's2')
+   -> VALIDATION: PASS   (auto-addressed 0x50/0x51/0x52) -> 3x C6482 in BOM
+SPEC: An MCU with nine EEPROM memory chips on one I2C bus
+   -> VALIDATION: REJECTED   └─ address space exhausted (0x50..0x57 full)
 ```
 
 **NL → orderable board, gated by validation.** See [`../ORCHESTRATOR.md`](../ORCHESTRATOR.md).
+`python3 electrical.py` shows the electrical gate rejecting an overloaded rail and a
+too-small pull-up.
 
 ## Reproduce
 ```bash

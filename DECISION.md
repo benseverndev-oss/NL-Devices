@@ -113,8 +113,11 @@ validator are now de-risked enough to build on.
    real LCSC MPNs. Two specs yield two real boards; an unsatisfiable 3-EEPROM spec is
    rejected by the gate. LLM seam is enum-constrained to the catalog (can't invent
    parts) with a validator-feedback retry loop wired.
-   **Remaining for a product:** inject a real `call_model` (needs an API key);
-   auto-assign I2C addresses; fold the ngspice rail check into the gate.
+   **Now also:** ✅ I2C **auto-addressing** (distinct addresses from each part's
+   strappable range; capacity-exhaustion gated) and ✅ an **electrical gate**
+   (`electrical.py` — ngspice rail-load + pull-up-current checks). **Remaining for a
+   product:** inject a real `call_model` (needs an API key); richer block library
+   (real MCU, more peripherals).
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in
 > [`BUSINESS.md`](./BUSINESS.md) / [`RESEARCH.md`](./RESEARCH.md); this memo closes

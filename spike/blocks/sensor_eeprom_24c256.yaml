@@ -3,21 +3,19 @@ version: 0.1.0
 function: "I2C EEPROM peripheral"
 atopile_module: EepromBlock
 tags: [sensor, memory, eeprom, i2c]
-
 bound_part:
   lcsc: C6482
   mpn: AT24C256C-SSHL-T
   manufacturer: Microchip Tech
   footprint: SOIC-8
-
 ports:
-  power:
-    type: power
-    role: sink
-    voltage: 3.3
-    tolerance: 0.05
+  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05, current_ma: 5}
   i2c:
     type: i2c
     role: peripheral
-    address: 0x50                # EXPLICIT metadata — atopile can't infer this from pins
+    address_base: 0x50          # strappable 0x50..0x57 via 3 address pins
+    address_bits: 3
     provides_pullups: false
+codegen:                        # how to strap the assigned address
+  part_instance: eeprom
+  address_pins: [A0, A1, A2]    # LSB-first

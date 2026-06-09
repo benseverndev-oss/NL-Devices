@@ -4,14 +4,21 @@
 > design by **composing pre-verified blocks**, gated by the seam-validator.
 > Status: **prototype running** (`spike/orchestrator.py`).
 
-## The loop (now closes in a manufacturable BOM)
+## The loop (closes in a manufacturable BOM)
 
 ```
-  spec ─► Planner ─► slice ─► validate ─► codegen ─► ato build ─► BOM (real LCSC MPNs)
-            ▲                    │ gate                  │
-            pluggable            └ REJECT unsafe         └ verified_lib.ato modules
-            (Heuristic | LLM seam, enum-constrained)
+  spec ─► Planner ─► slice ─► [auto-address] ─► GATE ─► codegen ─► ato build ─► BOM
+            ▲                                     │                    │
+            pluggable                  topology + address-capacity     verified_lib.ato
+            (Heuristic | LLM seam)     + electrical (ngspice)          modules
+                                       └ REJECT unsafe
 ```
+
+The **gate** now has three stages, none trusting the planner: topological seam
+checks (`seam_validator`), I2C **address auto-assignment + capacity** (distinct
+addresses strapped from each part's range), and an **electrical** stage
+(`electrical.py`) that runs real ngspice op-points for rail loading and pull-up
+current.
 
 The architecture principle from [`DESIGN.md`](./DESIGN.md) made real: the planner
 **selects and wires** blocks from the closed verified-block catalog
@@ -25,12 +32,17 @@ deterministic [`seam_validator`](./spike/seam_validator.py) **gates** the result
 | Spec | Composed | Verdict |
 |---|---|---|
 | "MCU that logs **temperature** to **memory** over I2C" | LM75 (0x48) + EEPROM (0x50) + power + mcu | ✅ PASS |
-| "MCU with **two** EEPROM chips" | EEPROM 0x50 + EEPROM 0x51 (distinct) | ✅ PASS |
-| "MCU with **three** EEPROM chips" | only 2 distinct addresses exist → 3rd reuses 0x50 | ⛔ **REJECTED** (address collision) |
+| "MCU with **two** EEPROM chips" | EEPROM 0x50 + 0x51 (auto-assigned) | ✅ PASS |
+| "MCU with **three** EEPROM chips" | EEPROM 0x50 + 0x51 + 0x52 (auto-assigned) | ✅ PASS |
+| "MCU with **nine** EEPROM chips" | fills 0x50..0x57 (8), 9th has nowhere to go | ⛔ **REJECTED** (address space exhausted) |
 
-The third case is the point: when composition can't be done safely, **the validator
-gate rejects it** rather than shipping a broken board. Every block selected is a
-real, orderable part (`C6186`, `C477979`, `C6482`).
+**Auto-addressing** (#2): identical peripherals are auto-assigned distinct addresses
+from each part's strappable range (codegen straps `A0/A1/A2` per device); the gate
+only rejects when the bus genuinely runs out of address space. **Electrical gate**
+(#3): every passing design also clears ngspice rail-load and pull-up-current checks
+— the gate has teeth (an overloaded rail or a too-small pull-up is rejected; see
+`python3 electrical.py`). Every block selected is a real, orderable part (`C6186`,
+`C477979`, `C6482`).
 
 ## The loop ends in a real BOM (`--build`)
 
@@ -77,10 +89,13 @@ parts; the reject-unsafe-design behaviour.
 2. ✅ **DONE — atopile codegen** (`spike/codegen.py`): emits `App.ato` from the slice
    and `ato build`s to a manufacturable BOM. `orchestrator.py --build` runs the whole
    NL → BOM loop.
-3. **Richer library + auto-addressing** — more block types; auto-assign I2C addresses
-   from each part's strappable range instead of fixed per-block.
-4. **Power/▸electrical checks in the loop** — fold the ngspice rail check
-   ([`rail_check.py`](./spike/skidl/rail_check.py)) into the gate.
+3. ✅ **DONE — auto-addressing**: identical peripherals auto-assigned distinct
+   addresses from each part's strappable range (`seam_validator.assign_addresses`,
+   strapped by `codegen.py`); capacity-exhaustion is a real gate error.
+4. ✅ **DONE — electrical gate**: `electrical.py` folds ngspice rail-load and I2C
+   pull-up-current checks into the gate.
+5. **Still open — richer library** (more block types, real MCU) and a real
+   `call_model` for the LLM seam (needs an API key).
 
 ## Why this matters
 

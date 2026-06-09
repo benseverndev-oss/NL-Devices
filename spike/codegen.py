@@ -34,6 +34,22 @@ def generate_app(slice_doc: dict, lib: dict[str, bc.BlockSpec]) -> str:
     for inst, bid in insts.items():
         L.append(f"    {inst} = new {lib[bid].atopile_module}")
     L.append("")
+
+    # strap each peripheral's address pins per the auto-assigned address
+    design = bc.build_design(slice_doc, lib)
+    addr = {n.block: n.address for bus in design.buses for n in bus.nodes
+            if n.role == "peripheral"}
+    for inst, bid in insts.items():
+        cg = lib[bid].codegen
+        if not cg or addr.get(inst) is None:
+            continue
+        base = lib[bid].ports["i2c"]["address_base"]
+        off = addr[inst] - base
+        L.append(f"    # {inst}: I2C address 0x{addr[inst]:02X}")
+        for i, pin in enumerate(cg["address_pins"]):            # LSB-first
+            rail = "hv" if (off >> i) & 1 else "lv"
+            L.append(f"    {inst}.{cg['part_instance']}.{pin} ~ {inst}.power.{rail}")
+    L.append("")
     for r in slice_doc.get("rails", []):
         net = _ident(r["name"])
         L.append(f"    {net} = new ElectricPower")

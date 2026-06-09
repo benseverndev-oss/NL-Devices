@@ -27,8 +27,17 @@ CAPS = {
     "eeprom":      ["eeprom", "memory", "storage", "store", "log", "logger",
                     "logging", "record", "data"],
 }
-QTY = {"two": 2, "2": 2, "dual": 2, "pair": 2, "double": 2,
-       "three": 3, "3": 3, "triple": 3}
+QTY = {"two": 2, "dual": 2, "pair": 2, "double": 2, "three": 3, "triple": 3,
+       "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+
+def _qty(spec: str) -> int:
+    for t in spec.lower().replace(",", " ").split():
+        if t in QTY:
+            return QTY[t]
+        if t.isdigit():
+            return int(t)
+    return 1
 
 
 # ---- planner interface ------------------------------------------------------
@@ -71,7 +80,7 @@ class HeuristicPlanner(Planner):
         for cap, kws in CAPS.items():
             if not any(k in s for k in kws):
                 continue
-            qty = next((n for w, n in QTY.items() if w in s.split()), 1)
+            qty = _qty(spec)
             cands = [b for b in lib.values() if cap in b.tags]
             # prefer distinct addresses; cycle if the spec asks for more than exist
             for i in range(qty):
@@ -92,10 +101,10 @@ class LLMPlanner(Planner):
     def catalog(self, lib) -> str:
         lines = []
         for b in lib.values():
-            addr = b.ports.get("i2c", {}).get("address")
+            base = b.ports.get("i2c", {}).get("address_base")
             part = b.bound_part["lcsc"] if b.bound_part else "abstract"
             lines.append(f"- {b.id}: {b.function} | tags={b.tags} | part={part}"
-                         + (f" | i2c_addr=0x{addr:02X}" if addr is not None else ""))
+                         + (f" | i2c_base=0x{base:02X}" if base is not None else ""))
         return "\n".join(lines)
 
     def tool_schema(self, lib) -> dict:
@@ -144,19 +153,23 @@ class LLMPlanner(Planner):
 def run(spec, lib, planner: Planner):
     plan = planner.plan(spec, lib)
     design = bc.build_design(plan, lib)
-    res = sv.validate(design)
+    res = sv.validate(design)                       # topological seam checks
+    import electrical
+    res["electrical"] = electrical.check_electrical(plan, lib)   # ngspice gate stage
     ok = not any(res.values())
     return plan, design, res, ok
 
 
-def _render(plan, lib):
+def _render(plan, lib, design=None):
+    addr = ({n.block: n.address for bus in design.buses for n in bus.nodes
+             if n.role == "peripheral"} if design else {})
     out = []
     for inst, bid in plan["instances"].items():
         b = lib[bid]
-        addr = b.ports.get("i2c", {}).get("address")
         part = b.bound_part["lcsc"] if b.bound_part else "abstract"
+        a = addr.get(inst)
         out.append(f"      {inst:<6} = {bid:<26} [{part}"
-                   + (f", 0x{addr:02X}" if addr is not None else "") + "]")
+                   + (f", 0x{a:02X}" if a is not None else "") + "]")
     return "\n".join(out)
 
 
@@ -166,26 +179,26 @@ if __name__ == "__main__":
     print(f"Verified-block catalog ({len(lib)} blocks): {', '.join(lib)}\n")
 
     specs = [
-        "A microcontroller that logs temperature readings to memory over I2C",
-        "An I2C node: an MCU with two EEPROM memory chips",
-        "An MCU with three EEPROM memory chips on one I2C bus",   # exceeds distinct addrs -> GATED
+        # (spec, expect_pass)
+        ("A microcontroller that logs temperature readings to memory over I2C", True),
+        ("An I2C node: an MCU with two EEPROM memory chips", True),
+        ("An MCU with three EEPROM memory chips on one I2C bus", True),   # auto-addressed 0x50/0x51/0x52
+        ("An MCU with nine EEPROM memory chips on one I2C bus", False),   # exhausts 0x50..0x57 -> GATED
     ]
     all_expected = True
-    for spec in specs:
+    for i, (spec, expect_ok) in enumerate(specs):
         plan, design, res, ok = run(spec, lib, planner)
         print(f"SPEC: {spec}")
-        print(_render(plan, lib))
+        print(_render(plan, lib, design))
         print(f"   -> VALIDATION: {'PASS — design accepted' if ok else 'REJECTED by gate'}")
         for msgs in res.values():
             for m in msgs:
                 print(f"        └─ {m}")
-        # the 3rd spec is expected to be gated (only 2 distinct EEPROM addresses)
-        expect_ok = "three" not in spec.lower()
         all_expected &= (ok == expect_ok)
         # --build: take passing designs all the way to a manufacturable BOM
         if ok and "--build" in sys.argv:
             import codegen
-            built, bom = codegen.build(plan, lib, target=f"gen_{specs.index(spec)}")
+            built, bom = codegen.build(plan, lib, target=f"gen_{i}")
             print(f"   -> CODEGEN+BUILD: {'manufacturable BOM' if built else 'build failed'}")
             if built:
                 for line in bom.strip().splitlines()[1:]:
