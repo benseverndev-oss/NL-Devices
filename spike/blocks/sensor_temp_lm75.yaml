@@ -1,6 +1,7 @@
 id: sensor_temp_lm75
 version: 0.1.0
 function: "I2C temperature sensor (LM75A)"
+atopile_module: TempBlock
 tags: [sensor, temperature, temp, i2c]
 bound_part:
   lcsc: C477979

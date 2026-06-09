@@ -1,0 +1,96 @@
+# Verified-block module library (.ato) — the authored, manufacturable blocks the
+# orchestrator composes. Each wraps a real LCSC part with TYPED interfaces and sets
+# its I2C address by strapping the address pins. Codegen emits only the top-level
+# App that instantiates + wires these (see codegen.py).
+
+import ElectricPower
+import I2C
+import Capacitor
+import Resistor
+from "parts/Advanced_Monolithic_Systems_AMS1117_3_3/Advanced_Monolithic_Systems_AMS1117_3_3.ato" import Advanced_Monolithic_Systems_AMS1117_3_3_package
+from "parts/Microchip_Tech_AT24C256C_SSHL_T/Microchip_Tech_AT24C256C_SSHL_T.ato" import Microchip_Tech_AT24C256C_SSHL_T_package
+from "parts/Texas_Instruments_LM75AIMX_NOPB/Texas_Instruments_LM75AIMX_NOPB.ato" import Texas_Instruments_LM75AIMX_NOPB_package
+
+# --- power_3v3_ldo : 5V -> 3V3 (AMS1117-3.3, C6186) --------------------------
+module PowerBlock:
+    power_in = new ElectricPower
+    power_out = new ElectricPower
+    ldo = new Advanced_Monolithic_Systems_AMS1117_3_3_package
+    ldo.VIN ~ power_in.hv
+    ldo.GND ~ power_in.lv
+    ldo.VOUT ~ power_out.hv
+    ldo.GND ~ power_out.lv
+    power_out.voltage = 3.3V +/- 2%
+    cap_in = new Capacitor
+    cap_out = new Capacitor
+    cap_in.capacitance = 1uF +/- 20%
+    cap_out.capacitance = 10uF +/- 20%
+    cap_in.unnamed[0] ~ power_in.hv
+    cap_in.unnamed[1] ~ power_in.lv
+    cap_out.unnamed[0] ~ power_out.hv
+    cap_out.unnamed[1] ~ power_out.lv
+    assert power_out.voltage within 3.3V +/- 5%
+
+# --- mcu_i2c_controller : decoupling + I2C bus pull-ups ----------------------
+module McuBlock:
+    power = new ElectricPower
+    i2c = new I2C
+    cap = new Capacitor
+    cap.capacitance = 100nF +/- 20%
+    cap.unnamed[0] ~ power.hv
+    cap.unnamed[1] ~ power.lv
+    i2c.scl.reference ~ power
+    i2c.sda.reference ~ power
+    scl_pullup = new Resistor
+    sda_pullup = new Resistor
+    scl_pullup.resistance = 4.7kohm +/- 5%
+    sda_pullup.resistance = 4.7kohm +/- 5%
+    scl_pullup.unnamed[0] ~ i2c.scl.line
+    scl_pullup.unnamed[1] ~ power.hv
+    sda_pullup.unnamed[0] ~ i2c.sda.line
+    sda_pullup.unnamed[1] ~ power.hv
+    assert power.voltage within 3.3V +/- 5%
+
+# --- sensor_eeprom_24c256 : EEPROM @ 0x50 (AT24C256, C6482) ------------------
+module EepromBlock:
+    power = new ElectricPower
+    i2c = new I2C
+    eeprom = new Microchip_Tech_AT24C256C_SSHL_T_package
+    eeprom.VCC ~ power.hv
+    eeprom.GND ~ power.lv
+    eeprom.SCL ~ i2c.scl.line
+    eeprom.SDA ~ i2c.sda.line
+    eeprom.A0 ~ power.lv      # 0x50 : all address pins low
+    eeprom.A1 ~ power.lv
+    eeprom.A2 ~ power.lv
+    eeprom.WP ~ power.lv
+    assert power.voltage within 3.3V +/- 5%
+
+# --- sensor_eeprom_24c256_b : EEPROM @ 0x51 (AT24C256, C6482) ----------------
+module EepromBlockB:
+    power = new ElectricPower
+    i2c = new I2C
+    eeprom = new Microchip_Tech_AT24C256C_SSHL_T_package
+    eeprom.VCC ~ power.hv
+    eeprom.GND ~ power.lv
+    eeprom.SCL ~ i2c.scl.line
+    eeprom.SDA ~ i2c.sda.line
+    eeprom.A0 ~ power.hv      # 0x51 : A0 high
+    eeprom.A1 ~ power.lv
+    eeprom.A2 ~ power.lv
+    eeprom.WP ~ power.lv
+    assert power.voltage within 3.3V +/- 5%
+
+# --- sensor_temp_lm75 : temperature sensor @ 0x48 (LM75A, C477979) -----------
+module TempBlock:
+    power = new ElectricPower
+    i2c = new I2C
+    lm75 = new Texas_Instruments_LM75AIMX_NOPB_package
+    lm75.VSpos ~ power.hv
+    lm75.GND ~ power.lv
+    lm75.SCL ~ i2c.scl.line
+    lm75.SDA ~ i2c.sda.line
+    lm75.A0 ~ power.lv        # 0x48 : all address pins low
+    lm75.A1 ~ power.lv
+    lm75.A2 ~ power.lv
+    assert power.voltage within 3.3V +/- 5%

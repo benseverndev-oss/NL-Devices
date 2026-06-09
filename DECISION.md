@@ -107,12 +107,14 @@ validator are now de-risked enough to build on.
    feeds the seam-validator. Authored slice validates **PASS**; all 3 faults caught;
    schema **rejects** a peripheral missing its address. This is the library format the
    orchestrator will emit.
-4. ✅ **STARTED — orchestrator prototype** ([`ORCHESTRATOR.md`](./ORCHESTRATOR.md),
-   `spike/orchestrator.py`): NL spec → composes verified blocks → **seam-validator
-   gate** (accepts safe designs, rejects an unsatisfiable 3-EEPROM one on address
-   collision). LLM seam is enum-constrained to the catalog (can't invent parts) with a
-   validator-feedback retry loop wired. Next: inject a real `call_model`; emit `.ato`
-   from the slice and `ato build` to end the loop in a manufacturable BOM.
+4. ✅ **DONE — orchestrator prototype, loop closed end-to-end**
+   ([`ORCHESTRATOR.md`](./ORCHESTRATOR.md)): NL spec → compose verified blocks →
+   **seam-validator gate** → **`codegen.py` → `ato build` → manufacturable BOM** with
+   real LCSC MPNs. Two specs yield two real boards; an unsatisfiable 3-EEPROM spec is
+   rejected by the gate. LLM seam is enum-constrained to the catalog (can't invent
+   parts) with a validator-feedback retry loop wired.
+   **Remaining for a product:** inject a real `call_model` (needs an API key);
+   auto-assign I2C addresses; fold the ngspice rail check into the gate.
 
 > Risks #2 (monetization) and #3 (data moat) remain as scoped in
 > [`BUSINESS.md`](./BUSINESS.md) / [`RESEARCH.md`](./RESEARCH.md); this memo closes

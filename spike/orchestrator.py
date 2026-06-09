@@ -13,6 +13,7 @@ Run:  python3 orchestrator.py
 """
 from __future__ import annotations
 import json
+import sys
 from pathlib import Path
 
 import block_contract as bc
@@ -181,6 +182,14 @@ if __name__ == "__main__":
         # the 3rd spec is expected to be gated (only 2 distinct EEPROM addresses)
         expect_ok = "three" not in spec.lower()
         all_expected &= (ok == expect_ok)
+        # --build: take passing designs all the way to a manufacturable BOM
+        if ok and "--build" in sys.argv:
+            import codegen
+            built, bom = codegen.build(plan, lib, target=f"gen_{specs.index(spec)}")
+            print(f"   -> CODEGEN+BUILD: {'manufacturable BOM' if built else 'build failed'}")
+            if built:
+                for line in bom.strip().splitlines()[1:]:
+                    print(f"        {line}")
         print()
 
     print("=" * 68)

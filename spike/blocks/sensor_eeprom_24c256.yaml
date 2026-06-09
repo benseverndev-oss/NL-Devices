@@ -1,6 +1,7 @@
 id: sensor_eeprom_24c256
 version: 0.1.0
 function: "I2C EEPROM peripheral"
+atopile_module: EepromBlock
 tags: [sensor, memory, eeprom, i2c]
 
 bound_part:

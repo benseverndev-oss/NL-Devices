@@ -3,6 +3,7 @@
 id: power_3v3_ldo
 version: 0.1.0
 function: "5V -> 3V3 linear regulator"
+atopile_module: PowerBlock
 tags: [power, rail-3v3]
 
 bound_part:                      # real, orderable part (from `ato create part`)

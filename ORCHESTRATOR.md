@@ -4,13 +4,13 @@
 > design by **composing pre-verified blocks**, gated by the seam-validator.
 > Status: **prototype running** (`spike/orchestrator.py`).
 
-## The loop
+## The loop (now closes in a manufacturable BOM)
 
 ```
-  spec ─► Planner ─► slice (instances + rails + buses) ─► validate ─► PASS / REJECT
-            ▲
-            pluggable:  HeuristicPlanner (deterministic, runs now)
-                        LLMPlanner       (the seam — enum-constrained to the catalog)
+  spec ─► Planner ─► slice ─► validate ─► codegen ─► ato build ─► BOM (real LCSC MPNs)
+            ▲                    │ gate                  │
+            pluggable            └ REJECT unsafe         └ verified_lib.ato modules
+            (Heuristic | LLM seam, enum-constrained)
 ```
 
 The architecture principle from [`DESIGN.md`](./DESIGN.md) made real: the planner
@@ -31,6 +31,22 @@ deterministic [`seam_validator`](./spike/seam_validator.py) **gates** the result
 The third case is the point: when composition can't be done safely, **the validator
 gate rejects it** rather than shipping a broken board. Every block selected is a
 real, orderable part (`C6186`, `C477979`, `C6482`).
+
+## The loop ends in a real BOM (`--build`)
+
+`python3 spike/orchestrator.py --build` (or `codegen.py`) takes each passing design
+all the way: the verified blocks are authored `.ato` modules
+([`atopile/verified_lib.ato`](./spike/atopile/verified_lib.ato)); `codegen.py` emits
+the top-level `App` from the slice and runs `ato build`. The temperature-logger spec
+yields a manufacturable BOM:
+```
+U1, SOT-223-3, AMS1117-3.3,      C6186     (LDO)
+U2, SOIC-8,    LM75AIMX/NOPB,    C477979   (temp sensor @0x48)
+U3, SOIC-8,    AT24C256C-SSHL-T, C6482     (EEPROM @0x50)
+R1,R2 4.7kΩ C25900 · C1/C2/C3 decoupling — all real LCSC MPNs
+```
+**NL → orderable board, gated by validation.** Codegen composes pre-verified block
+modules; it never invents connectivity beyond wiring typed ports.
 
 ## The LLM seam (how a model plugs in)
 
@@ -58,10 +74,9 @@ parts; the reject-unsafe-design behaviour.
 **Out (next):**
 1. **Real LLM planner** — inject an Anthropic `call_model`; run NL specs through the
    model with the enum-constrained tool + validator-feedback retry loop.
-2. **atopile codegen** — emit `.ato` from the generated slice and `ato build` it, so
-   the loop ends in a **manufacturable BOM** (today it ends at validation; the
-   hand-written [`verified_slice.ato`](./spike/atopile/verified_slice.ato) proves the
-   build side works).
+2. ✅ **DONE — atopile codegen** (`spike/codegen.py`): emits `App.ato` from the slice
+   and `ato build`s to a manufacturable BOM. `orchestrator.py --build` runs the whole
+   NL → BOM loop.
 3. **Richer library + auto-addressing** — more block types; auto-assign I2C addresses
    from each part's strappable range instead of fixed per-block.
 4. **Power/▸electrical checks in the loop** — fold the ngspice rail check
@@ -77,5 +92,7 @@ on this gated loop.
 
 ## Reproduce
 ```bash
-cd spike && python3 orchestrator.py
+cd spike && python3 orchestrator.py            # compose + gate (no atopile)
+cd spike && python3 orchestrator.py --build    # NL -> ... -> manufacturable BOM
+cd spike && python3 codegen.py                 # one spec, full codegen + build
 ```

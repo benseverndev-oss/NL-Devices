@@ -33,6 +33,7 @@ class BlockSpec:
     bound_part: dict | None = None
     invariants: list = field(default_factory=list)
     tags: list = field(default_factory=list)
+    atopile_module: str | None = None
 
     def port(self, name: str) -> dict:
         if name not in self.ports:
@@ -71,7 +72,8 @@ def load_blocks(blocks_dir: Path = HERE / "blocks") -> dict[str, BlockSpec]:
         out[d["id"]] = BlockSpec(
             id=d["id"], version=d["version"], function=d["function"],
             ports=d["ports"], bound_part=d.get("bound_part"),
-            invariants=d.get("invariants", []), tags=d.get("tags", []))
+            invariants=d.get("invariants", []), tags=d.get("tags", []),
+            atopile_module=d.get("atopile_module"))
     return out
 
 

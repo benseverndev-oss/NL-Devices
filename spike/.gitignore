@@ -13,3 +13,5 @@ skidl_REPL.*
 *.net
 *.step
 *.STEP
+generated.ato
+gen_*.ato

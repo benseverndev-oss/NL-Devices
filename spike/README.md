@@ -353,3 +353,30 @@ preinstalled with system `python3` here.)
 ```bash
 cd spike && python3 block_contract.py --faults
 ```
+
+---
+
+# Orchestrator + codegen — NL → manufacturable BOM (loop closed) ✅
+
+`orchestrator.py` composes verified blocks from a NL spec and **gates** on the
+seam-validator; `codegen.py` emits a top-level `App.ato` from the slice (over the
+authored block modules in `atopile/verified_lib.ato`) and `ato build`s it.
+
+```
+$ python3 orchestrator.py --build
+SPEC: A microcontroller that logs temperature readings to memory over I2C
+   -> VALIDATION: PASS — design accepted
+   -> CODEGEN+BUILD: manufacturable BOM
+        U1 … AMS1117-3.3      C6186      (LDO)
+        U2 … LM75AIMX/NOPB    C477979    (temp sensor @0x48)
+        U3 … AT24C256C-SSHL-T C6482      (EEPROM @0x50)
+SPEC: An MCU with three EEPROM memory chips on one I2C bus
+   -> VALIDATION: REJECTED by gate   └─ address 0x50 collision ('s0' and 's2')
+```
+
+**NL → orderable board, gated by validation.** See [`../ORCHESTRATOR.md`](../ORCHESTRATOR.md).
+
+## Reproduce
+```bash
+cd spike && python3 orchestrator.py --build    # NL -> compose -> gate -> BOM
+```

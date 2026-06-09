@@ -1,6 +1,7 @@
 id: sensor_eeprom_24c256_b
 version: 0.1.0
 function: "I2C EEPROM peripheral (second instance, address 0x51)"
+atopile_module: EepromBlockB
 tags: [sensor, memory, eeprom, i2c]
 bound_part:
   lcsc: C6482
