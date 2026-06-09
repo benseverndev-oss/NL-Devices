@@ -51,8 +51,11 @@ Designator,Footprint,Quantity,Value,Manufacturer,Partnumber,LCSC Part #
    - SKiDL needs KiCad symbol libs; we use the **monolithic** format (KiCad tag
      `8.0.0`), not GitLab master's new split `*.kicad_symdir/` layout.
 
-5. **Version note:** atopile installed is **0.12.5** (latest is 0.15.7). Pin/upgrade
-   deliberately before step 1 — newer syntax (typed interfaces docs) targets 0.14+.
+5. **Version note:** atopile is **pinned to 0.12.5 on Python 3.13** (latest is 0.15.7,
+   but 0.13+ needs Python 3.14, which is RC and crashed the CLI). The pin lives in
+   `../scripts/setup.sh` / `setup.ps1`, `../.python-version`, and `atopile/ato.yaml`
+   (`>=0.12.5`); `../scripts/check_toolchain.py` keeps them in sync. Upgrade
+   deliberately once the 3.14 line stabilizes — newer typed-interface syntax targets 0.14+.
 
 ## Reproduce
 
@@ -74,12 +77,13 @@ python hello_skidl.py        # -> divider.net + ERC
 python ngspice_check.py      # -> V(MID)=2.5V  PASS
 ```
 
-**atopile leg** (Python 3.12+, via `uv`):
+**atopile leg** (pinned atopile 0.12.5 / Python 3.13, via `uv`):
 ```bash
-uv python install 3.13
-uv tool install atopile --python 3.13             # installs `ato`
+./scripts/setup.sh                                 # pins + installs ato 0.12.5 / Py 3.13
 cd spike/atopile && ato build                      # -> build/builds/divider/...
 ```
+(`scripts/setup.ps1` for Windows. The script wraps `uv python install 3.13` +
+`uv tool install atopile==0.12.5 --python 3.13` and verifies the pin.)
 
 ## Files (committed)
 - `atopile/main.ato`, `atopile/ato.yaml` — the atopile divider + build config

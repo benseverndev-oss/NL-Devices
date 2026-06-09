@@ -1,4 +1,7 @@
-requires-atopile: ">=0.12.0"
+# Pinned to the known-good line (DECISION.md step 1). 0.13+ requires Python 3.14
+# (RC, crashes); the 3.13 pin in ../../.python-version caps atopile to 0.12.x.
+# Reproducible install: ../../scripts/setup.sh  (atopile==0.12.5 / Python 3.13).
+requires-atopile: ">=0.12.5"
 builds:
   divider:
     entry: main.ato:Divider
