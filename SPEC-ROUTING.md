@@ -56,6 +56,13 @@ everything that can (placement math, output parsing) is pure and unit-tested off
 same discipline `spice_sim.py` uses to cross-check its analytic limit without ngspice
 locally.
 
+**The offline test fixture.** `place.py`'s offline `--selftest` needs a real input board, not
+a hand-authored stand-in. The plan captures the `ato build` output for `sensor_node` once (the
+unrouted `.kicad_pcb` + its netlist) and commits it under `spike/fixtures/`; that fixture is
+the offline input for `place.py` and the source for the `route.py` parser fixtures (a sample
+freerouting log, a `kicad-cli` DRC JSON, a Gerber file list). The fixture is regenerated when
+the blocks change — the `route` job's live `ato build` is what catches fixture drift.
+
 ## 4. How DRC-clean is guaranteed (not hoped for)
 
 A routed board is only DRC-clean if the autorouter routes to the *same* rules KiCad checks.
@@ -87,16 +94,26 @@ atopile-expanded passives). Rules:
 A **new `route` job**, isolated from the deterministic `spike` job so its network + heavy-tool
 fragility can't redden the core gates:
 
-- installs a **pinned KiCad** (exposing `kicad-cli pcb export specctradsn` / SES import —
-  KiCad 9; falls back to a `pcbnew` Python script if a subcommand is absent), **java**, and a
-  **pinned `freerouting` release** (jar by tag);
+- installs a **pinned KiCad** (KiCad 9, exposing `kicad-cli pcb export specctradsn`),
+  **java**, and a **pinned `freerouting` release** (jar by tag);
 - runs `ato build` (the accepted fragile network step) → the full chain in §2;
 - **hard-fails** on: unrouted ≠ 0, DRC ≠ 0, or missing/invalid copper Gerbers.
 
-KiCad + freerouting versions are pinned, matching the project's pin-everything ethos
-(`check_toolchain.py` is extended to lint the new pins). `place.py` and the `route.py`
-parsers also run in the existing offline `spike` job via `--selftest`, so the pure logic is
-gated even when the `route` job is skipped/red.
+**Primary vs. fallback for SES import** (the one load-bearing tool uncertainty): the
+**primary** path targets `kicad-cli` on the pinned KiCad 9. SES *import* is the thinner spot
+in `kicad-cli` — if the pinned version doesn't expose it as a subcommand, a small `pcbnew`
+Python script is the fallback. The plan picks **one** primary against the pinned version and
+builds the fallback only if that version proves it absent — not both speculatively.
+
+**Where the pins live:** `scripts/check_toolchain.py` today only knows `ATOPILE_VERSION` /
+`PYTHON_VERSION` and lints them against `ato.yaml` / `.python-version` / the setup scripts —
+there is **no** existing home for a KiCad or freerouting version. This spec adds a
+`KICAD_VERSION` + `FREEROUTING_VERSION` constant block to that script and cross-checks them
+against the `route` job's install steps (the single declared source of the pins). The plan
+must create that home before the lint can be written.
+
+`place.py` and the `route.py` parsers also run in the existing offline `spike` job via
+`--selftest`, so the pure logic is gated even when the `route` job is skipped/red.
 
 ## 7. The strategy reversal (DESIGN §4)
 
