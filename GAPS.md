@@ -136,11 +136,17 @@ electrical leg is a placeholder.
 > (reported `UNVERIFIABLE`, not blessed); no price feed; the snapshot doesn't yet pin
 > the `ato build` part-pick. This is why the row drops 🔴→🟠 rather than closing.
 
-### 4e. Layout → routing → fab export (the "eventually") — 🟠 (unstarted, but in-goal)
-- ❌ `ato build` emits a `.kicad_pcb` with components but **no placement/routing**.
+### 4e. Layout → routing → fab export (the "eventually") — 🟠 (export path spiked; routing still the blocker)
+- ❌ `ato build` emits a `.kicad_pcb` with components but **no placement/routing** — still
+  the load-bearing gap.
 - ❌ No autorouter integration (DESIGN says *complement* Quilter — no integration).
-- ❌ No fab export (Gerbers, JLC/PCBWay order API, assembly). The README's "routed PCB
-  exportable to fab" is entirely future work.
+- ✅ **One fab-export path now spiked** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)):
+  `spike/fab_export.py` builds a JLCPCB package — real-LCSC **BOM**, **CPL** (placed by
+  real part body sizes), a format-valid **Edge.Cuts Gerber** + **Excellon drill**, and a
+  **validated, dry-run** assembly-order payload (reuses the `verify_parts` snapshot, so a
+  board can't ship with an unverified part). **Copper layers are intentionally not
+  emitted** — routing is upstream; this proves the packaging + order mechanics, not a
+  routed board.
 
 ### 4f. Product / delivery — 🟡
 - ❌ No UI, API service, persistence, accounts, or project/versioning — it's a set of
@@ -209,9 +215,13 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    and whose `--selftest` cross-checks the analytic `0.8473·R·C` limit to <5% (run live
    in CI). **Still open:** wire the proven droop sim into the gate (needs per-rail
    decoupling-cap data) and a load/thermal-dependent behavioural LDO model.
-7. **Spike one fab-export path (🟠).** Gerbers + a single fab order API — smallest
-   step toward the "eventually" tail and a prerequisite for the assembly-order
-   business model.
+7. ✅ **DONE (spike) — one fab-export path** ([`SPEC-FAB-EXPORT.md`](./SPEC-FAB-EXPORT.md)).
+   `spike/fab_export.py` emits a JLCPCB package (real-LCSC BOM + CPL + format-valid
+   Edge.Cuts Gerber + Excellon drill) and a **validated, dry-run** assembly-order payload
+   (never submits). `--selftest` builds the sensor_node board (3 parts → 32×32mm),
+   validates clean, and rejects a bogus-LCSC package. **Still open (the real blocker):**
+   routing — copper layers aren't emitted; wiring `ato build`'s `.kicad_pcb` + an
+   autorouter + `kicad-cli` Gerber export is what makes the copper real.
 8. **Run the cheapest business test (🟠):** 5–10 customer-discovery calls on respin
    WTP and one fab partner conversation on wholesale margin — the two unproven
    assumptions the whole revenue model rests on.

@@ -38,5 +38,8 @@ is the interface.
 - **[SPEC-SPICE.md](./SPEC-SPICE.md)** — replacing the "Ohm's-law-in-a-SPICE-costume"
   electrical gate with an honest analytic dropout check + **genuine ngspice `.tran`
   sims** (I2C rise time, rail droop) that cross-check the analytic limit (GAPS §3/§5.6).
+- **[SPEC-FAB-EXPORT.md](./SPEC-FAB-EXPORT.md)** — spiking one fab path: a JLCPCB
+  package (real-LCSC BOM + CPL + format-valid Gerber/drill) and a validated **dry-run**
+  order, honest that copper routing is still the upstream blocker (GAPS §4e/§5.7).
 
 > Status: early scoping / pre-build.
