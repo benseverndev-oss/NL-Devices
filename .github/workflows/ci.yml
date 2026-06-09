@@ -23,6 +23,7 @@ jobs:
         run: |
           python3 seam_validator.py
           python3 block_contract.py --faults
+          python3 validator_corpus.py    # adversarial corpus; gates on covered-fault regressions
           python3 orchestrator.py
           python3 eval_planner.py        # offline FakeModel; gates on 0-hallucination
       - name: Ground-truth part-data gate (offline, no network)

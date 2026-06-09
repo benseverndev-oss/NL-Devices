@@ -88,28 +88,37 @@ def build_design(slice_doc: dict, blocks: dict[str, BlockSpec]) -> sv.Design:
 
     rails = []
     for r in slice_doc.get("rails", []):
+        capacity = None
         if "source" in r:
             sv_v, sv_tol = r["source"]["voltage"], r["source"]["tolerance"]
         else:                                            # rail driven by a block source port
             _, sp = resolve(r["source_from"])
             sv_v, sv_tol = sp["voltage"], sp["tolerance"]
-        sinks = []
+            capacity = sp.get("max_current_ma")          # the source port's deliverable current
+        sinks, loads = [], []
         for ref in r.get("sinks", []):
             inst, sp = resolve(ref)
             sinks.append((inst, sp["voltage"], sp["tolerance"]))
-        rails.append(sv.PowerRail(r["name"], sv_v, sv_tol, sinks=sinks))
+            if "current_ma" in sp:                       # the sink's draw, for the current budget
+                loads.append((inst, sp["current_ma"]))
+        rails.append(sv.PowerRail(r["name"], sv_v, sv_tol, sinks=sinks,
+                                  source_capacity_ma=capacity, loads=loads))
 
     buses = []
     for b in slice_doc.get("buses", []):
-        nodes = []
+        nodes, pullup = [], None
         for ref in b.get("members", []):
             inst, sp = resolve(ref)
             nodes.append(sv.I2CNode(block=inst, role=sp["role"],
                                     provides_pullups=sp.get("provides_pullups", False),
                                     address=sp.get("address"),
                                     addr_base=sp.get("address_base"),
-                                    addr_bits=sp.get("address_bits", 0)))
-        buses.append(sv.I2CBus(b["name"], nodes=nodes))
+                                    addr_bits=sp.get("address_bits", 0),
+                                    pin_cap_pf=sp.get("pin_cap_pf", 10.0)))
+            if sp.get("provides_pullups") and sp.get("pullup_ohms"):
+                pullup = sp["pullup_ohms"]               # the terminating block sets the bus pull-up
+        buses.append(sv.I2CBus(b["name"], nodes=nodes, pullup_ohms=pullup,
+                               speed_hz=b.get("speed_hz", 100_000)))
 
     design = sv.Design(slice_doc["name"], rails=rails, buses=buses)
     sv.assign_addresses(design)          # auto-assign distinct I2C addresses

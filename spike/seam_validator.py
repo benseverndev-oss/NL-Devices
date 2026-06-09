@@ -25,6 +25,8 @@ class PowerRail:
     source_v: float          # nominal volts the source provides
     source_tol: float        # fractional tolerance, e.g. 0.05
     sinks: list[tuple[str, float, float]] = field(default_factory=list)  # (block, req_v, tol)
+    source_capacity_ma: float | None = None   # max current the source can deliver (None = unmodeled)
+    loads: list[tuple[str, float]] = field(default_factory=list)  # (block, current_ma) drawn from this rail
 
 
 @dataclass
@@ -35,12 +37,16 @@ class I2CNode:
     address: int | None = None   # 7-bit address (assigned from the range below)
     addr_base: int | None = None # lowest strappable address
     addr_bits: int = 0           # number of address pins -> range = 2**addr_bits
+    pin_cap_pf: float = 10.0     # device SCL/SDA pin capacitance (I2C spec budgets 10pF/pin)
 
 
 @dataclass
 class I2CBus:
     name: str
     nodes: list[I2CNode] = field(default_factory=list)
+    speed_hz: int = 100_000           # target SCL frequency (100k standard / 400k fast / 1M Fm+)
+    pullup_ohms: float | None = None  # bus pull-up resistance (None = unmodeled, skips timing check)
+    stray_cap_pf: float = 20.0        # board/trace stray capacitance budget
 
 
 @dataclass
@@ -111,9 +117,73 @@ def check_i2c_addresses(d: Design) -> list[str]:
     return errs
 
 
+# ---- deeper rating / electrical checks (validator-depth pass, GAPS §4c) ------
+# These fire only when the design carries the relevant data (current budget,
+# pull-up value, ...). Absent data -> the check is skipped, never a false alarm.
+I2C_RESERVED_LO = 0x07    # 0x00..0x07 reserved (general call, CBUS, ...)
+I2C_RESERVED_HI = 0x78    # 0x78..0x7F reserved (10-bit, device-ID, ...)
+I2C_MAX_BUS_CAP_PF = 400.0
+I2C_RISE_LIMIT_NS = {100_000: 1000.0, 400_000: 300.0, 1_000_000: 120.0}  # t_r max per mode
+
+
+def check_current_budget(d: Design) -> list[str]:
+    """A rail must not be asked to source more current than it can deliver."""
+    errs = []
+    for r in d.rails:
+        if r.source_capacity_ma is None or not r.loads:
+            continue
+        total = sum(c for _, c in r.loads)
+        if total > r.source_capacity_ma:
+            who = ", ".join(f"{b}:{c:.0f}mA" for b, c in r.loads)
+            errs.append(
+                f"POWER: rail '{r.name}' draws {total:.0f}mA ({who}) > source capacity "
+                f"{r.source_capacity_ma:.0f}mA")
+    return errs
+
+
+def check_i2c_reserved_addresses(d: Design) -> list[str]:
+    """Assigned addresses must be valid 7-bit and outside the I2C reserved ranges."""
+    errs = []
+    for b in d.buses:
+        for n in b.nodes:
+            if n.role != 'peripheral' or n.address is None:
+                continue
+            a = n.address
+            if not (0 <= a <= 0x7F):
+                errs.append(f"I2C: bus '{b.name}' '{n.block}' address 0x{a:02X} is not a valid 7-bit address")
+            elif a <= I2C_RESERVED_LO or a >= I2C_RESERVED_HI:
+                errs.append(f"I2C: bus '{b.name}' '{n.block}' address 0x{a:02X} is in a reserved I2C range")
+    return errs
+
+
+def check_i2c_bus_capacitance(d: Design) -> list[str]:
+    """Bus capacitance must stay within spec, and (if the pull-up is known) the RC
+    rise time must meet the target-speed limit. t_r ≈ 0.8473·R·C (10%→90%)."""
+    errs = []
+    for b in d.buses:
+        if not b.nodes:
+            continue
+        cap_pf = sum(n.pin_cap_pf for n in b.nodes) + b.stray_cap_pf
+        if cap_pf > I2C_MAX_BUS_CAP_PF:
+            errs.append(f"I2C: bus '{b.name}' est. capacitance {cap_pf:.0f}pF exceeds "
+                        f"{I2C_MAX_BUS_CAP_PF:.0f}pF spec maximum")
+        if b.pullup_ohms:
+            t_r_ns = 0.8473 * b.pullup_ohms * cap_pf * 1e-3   # R(Ω)·C(pF) → ns
+            limit = I2C_RISE_LIMIT_NS.get(b.speed_hz)
+            if limit and t_r_ns > limit:
+                errs.append(
+                    f"I2C: bus '{b.name}' rise time ~{t_r_ns:.0f}ns "
+                    f"(R={b.pullup_ohms:.0f}Ω, C={cap_pf:.0f}pF) exceeds {limit:.0f}ns "
+                    f"limit at {b.speed_hz // 1000}kHz")
+    return errs
+
+
 CHECKS = [("power-domain", check_power_domains),
           ("i2c-pullups", check_i2c_pullups),
-          ("i2c-address", check_i2c_addresses)]
+          ("i2c-address", check_i2c_addresses),
+          ("current-budget", check_current_budget),
+          ("i2c-reserved-addr", check_i2c_reserved_addresses),
+          ("i2c-bus-timing", check_i2c_bus_capacitance)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:
@@ -157,6 +227,11 @@ def fault3_addr_collision() -> Design:
 
 
 if __name__ == '__main__':
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")   # box-drawing glyphs on Windows consoles
+    except Exception:
+        pass
     designs = [correct(), fault1_power_domain(), fault2_no_pullups(), fault3_addr_collision()]
     expect_fail = {"fault1_power_domain": "power-domain",
                    "fault2_no_pullups": "i2c-pullups",
