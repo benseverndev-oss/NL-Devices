@@ -135,7 +135,10 @@ def selftest() -> bool:
     print(f"  [{'ok' if not overlap else 'FAIL'}] no courtyard overlap (board {w:.1f}x{h:.1f}mm)"); ok &= not overlap
     for r in overlap: print(f"        x {r[0]} ~ {r[1]}")
     out = write_positions(text, fps)
-    det = write_positions(text, parse_footprints(text)) == out and out.count("(footprint") == text.count("(footprint")
+    # Determinism: running place_board twice on the same input must give identical output.
+    out2 = place_board(FIXTURE)
+    count_ok = out.count("(footprint") == text.count("(footprint")
+    det = (out == out2) and count_ok
     print(f"  [{'ok' if det else 'FAIL'}] writer deterministic + footprint count preserved"); ok &= det
     print("-" * 60); print("SELFTEST:", "PASS" if ok else "FAIL")
     return ok
