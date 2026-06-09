@@ -185,3 +185,70 @@ cd spike/skidl && . .venv/bin/activate
 export KICAD_SYMBOL_DIR=$PWD/../kicad-symbols KICAD8_SYMBOL_DIR=$PWD/../kicad-symbols
 python sensor_node_skidl.py        # -> ERC clean + sensor_node.net
 ```
+
+---
+
+# Step 3+4: Seam-fault detection — THE MOAT MEASUREMENT (COMPLETE ✅)
+
+The decisive test: inject the three SPIKE.md §4 seam faults and measure how many
+atopile catches **natively** vs. how many we must build. Then prove our own
+seam-validator catches all three.
+
+## Part A — what atopile catches for free
+
+Each fault is a build target in `atopile/sensor_node.ato` (modules
+`AppFault1PowerDomain`, `AppFault2NoPulls`, `AppFault3AddrCollision`). Consumer
+blocks declare their rail invariant (`assert power.voltage within 3.3V +/- 5%`).
+
+| Fault | atopile native result | Caught? |
+|---|---|---|
+| **1. Power-domain mismatch** (MCU on 5V) | build **fails**: `Contradiction: Intersection of literals is empty — power5v.voltage [5V±5%] vs mcu.power.voltage [3.135V,3.465V]` | ✅ **YES** (constraint solver) |
+| **2. Missing I2C pull-ups** | build **succeeds** — `requires_pulls` trait exists but is not enforced | ❌ no |
+| **3. I2C address collision** (two peripherals @ 0x50) | build **succeeds** — address rules need concrete addressed devices | ❌ no |
+
+**Finding:** atopile's typed model + constraint solver gives the **hardest** seam
+check — parametric power-domain compatibility — *for free*. The I2C **topology**
+rules (pull-ups, addresses) it does **not** enforce. So the seam-validation moat is
+real but **partially pre-built by atopile** (the parametric third, the expensive one).
+
+## Part B — our seam-validator catches all three
+
+`seam_validator.py` (~150 lines, no deps, substrate-independent) runs over a typed
+block-graph — the "verified block" contract from SPIKE.md §3 — and checks all three
+seams. Output:
+
+```
+design                   power  pulls  addr   verdict
+--------------------------------------------------------
+correct                  ok     ok     ok      PASS
+fault1_power_domain      FAIL   ok     ok      PASS
+    └─ POWER: rail '5V' = [4.750V,5.250V] is outside 'mcu' accepted [3.135V,3.465V]
+fault2_no_pullups        ok     FAIL   ok      PASS
+    └─ I2C: bus 'i2c_bus' has no pull-up provider (SCL/SDA float)
+fault3_addr_collision    ok     ok     FAIL    PASS
+    └─ I2C: bus 'i2c_bus' address 0x50 collision ('sensor' and 'sensor_b')
+--------------------------------------------------------
+RESULT: PASS — validator caught exactly the injected faults
+```
+
+Each fault triggers **exactly** its intended check (no false positives) and the
+correct design passes — SPIKE.md **acceptance criterion #3 met**.
+
+## Verdict on the thesis (Risk #1)
+
+**The seam-validation moat is real and cheap to build.** All three seam rules are
+small, deterministic, and explainable; atopile already pre-builds the hardest
+(parametric power domains) via its constraint solver. This is strong evidence for
+the architecture: **atopile-as-author (typed seams + constraint solving) + a thin
+custom seam-validator (I2C/topology rules) + the SKiDL/ngspice harness for
+electrical sanity.** The expensive part is *not* the validator — it's the
+verified-block library / IC part data (the Step-1 finding), which is where effort
+should go.
+
+## Reproduce
+```bash
+cd spike && python3 seam_validator.py                       # all 3 faults caught
+cd atopile && ato build -b fault1   # atopile catches this (build fails by design)
+                ato build -b fault2  # builds clean -> atopile misses (our checker catches)
+                ato build -b fault3  # builds clean -> atopile misses (our checker catches)
+```

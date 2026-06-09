@@ -4,3 +4,9 @@ builds:
     entry: main.ato:Divider
   sensor_node:
     entry: sensor_node.ato:App
+  fault1:
+    entry: sensor_node.ato:AppFault1PowerDomain
+  fault2:
+    entry: sensor_node.ato:AppFault2NoPulls
+  fault3:
+    entry: sensor_node.ato:AppFault3AddrCollision

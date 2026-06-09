@@ -46,6 +46,9 @@ module McuBlock:
     cap.unnamed[0] ~ power.hv
     cap.unnamed[1] ~ power.lv
 
+    # Block invariant: this MCU runs on a 3V3 rail.
+    assert power.voltage within 3.3V +/- 5%
+
     # I2C reference (voltage domain) is established from this block's rail.
     i2c.scl.reference ~ power
     i2c.sda.reference ~ power
@@ -69,6 +72,9 @@ module SensorBlock:
     device.power ~ power
     device.i2c ~ i2c
 
+    # Block invariant: this sensor runs on a 3V3 rail.
+    assert power.voltage within 3.3V +/- 5%
+
 # --- Top level: compose the three blocks over typed power + I2C seams. -------
 module App:
     power5v = new ElectricPower
@@ -90,3 +96,72 @@ module App:
     i2c_bus.frequency = 400kHz
     mcu.i2c ~ i2c_bus
     sensor.i2c ~ i2c_bus
+
+# ===== FAULT 1: power-domain mismatch (MCU fed from 5V instead of 3V3) =======
+module AppFault1PowerDomain:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+
+    psu = new PowerBlock
+    mcu = new McuBlock
+    sensor = new SensorBlock
+
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power5v      # <-- FAULT: 3V3 MCU on the 5V rail
+    sensor.power ~ power3v3
+
+    i2c_bus = new I2C
+    i2c_bus.frequency = 400kHz
+    mcu.i2c ~ i2c_bus
+    sensor.i2c ~ i2c_bus
+
+# ===== FAULT 2: missing I2C pull-ups (controller without pull resistors) =====
+module McuBlockNoPulls:
+    power = new ElectricPower
+    i2c = new I2C
+    cap = new Capacitor
+    cap.capacitance = 100nF +/- 20%
+    cap.unnamed[0] ~ power.hv
+    cap.unnamed[1] ~ power.lv
+    i2c.scl.reference ~ power
+    i2c.sda.reference ~ power
+    assert power.voltage within 3.3V +/- 5%
+    # <-- FAULT: no scl/sda pull-up resistors to the rail
+
+module AppFault2NoPulls:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+    psu = new PowerBlock
+    mcu = new McuBlockNoPulls
+    sensor = new SensorBlock
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power3v3
+    sensor.power ~ power3v3
+    i2c_bus = new I2C
+    i2c_bus.frequency = 400kHz
+    mcu.i2c ~ i2c_bus
+    sensor.i2c ~ i2c_bus
+
+# ===== FAULT 3: I2C address collision (two peripherals, same address) ========
+module AppFault3AddrCollision:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+    psu = new PowerBlock
+    mcu = new McuBlock
+    sensor_a = new SensorBlock
+    sensor_b = new SensorBlock     # <-- second device, default (same) address
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power3v3
+    sensor_a.power ~ power3v3
+    sensor_b.power ~ power3v3
+    i2c_bus = new I2C
+    i2c_bus.frequency = 400kHz
+    mcu.i2c ~ i2c_bus
+    sensor_a.i2c ~ i2c_bus
+    sensor_b.i2c ~ i2c_bus
