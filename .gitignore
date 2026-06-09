@@ -1,0 +1,5 @@
+# Python caches / build artifacts (reproducible from sources, not committed).
+# Spike-specific ignores live in spike/.gitignore.
+__pycache__/
+*.pyc
+.venv/

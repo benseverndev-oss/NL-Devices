@@ -132,9 +132,12 @@ electrical leg is a placeholder.
 ### 4g. Engineering hygiene / reproducibility — 🟡
 - ❌ No CI, no test runner (scripts self-assert via `SystemExit`; no pytest), no
   SessionStart hook to keep the toolchain green on web sessions.
-- ❌ Toolchain **not pinned** (`ato.yaml` says `>=0.12.0`; DECISION's own step 1 "pin
-  atopile 0.12.5 / Python 3.13 in a setup script" is **not done**). No root deps
-  manifest; `pyyaml` is assumed preinstalled.
+- ✅ **Toolchain now pinned** (DECISION step 1). `scripts/setup.sh` / `setup.ps1`
+  install **atopile 0.12.5 on Python 3.13** via `uv` + the spike Python deps;
+  `ato.yaml` floor is `>=0.12.5`, `.python-version` pins 3.13. `scripts/check_toolchain.py`
+  lints pin-consistency (offline CI step) and a `toolchain` CI job proves the install
+  resolves. *Still open:* `pyyaml` version isn't hard-locked and there's no single
+  root deps lockfile (setup installs `spike/requirements.txt`).
 
 ### 4h. Business / monetization — 🟠 (strategy only, unvalidated)
 - ❌ Risk #2 (will the wedge customer pay for a guarantee?) and Risk #3 (fab wholesale
@@ -170,9 +173,11 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    faults caught). **Still open:** `address_base`/tolerance ground truth (no source yet
    → `UNVERIFIABLE`), price/stock feed depth, and pinning the *`ato build`* part-pick to
    the snapshot for fully offline builds.
-4. **Pin the toolchain + add CI (🟡).** ✅ **CI added** (`.github/workflows/ci.yml`
-   runs ngspice + the four spike scripts incl. the planner eval). *Still open:* pin
-   atopile 0.12.5 / Py 3.13 in a setup script (DECISION step 1).
+4. ✅ **DONE — pin the toolchain + CI (🟡).** CI runs ngspice + the four spike
+   scripts incl. the planner eval; **now also** `scripts/setup.sh`/`setup.ps1` pin
+   **atopile 0.12.5 / Python 3.13** (DECISION step 1), `scripts/check_toolchain.py`
+   lints pin-consistency offline, and a `toolchain` CI job proves the pinned install
+   resolves. *Still open:* a single root deps lockfile / hard-locked `pyyaml`.
 5. **Deepen + adversarially test the validator (🟠).** Add real-rating/ERC checks and
    a *third-party* corpus of known-bad designs to measure false negatives — the only
    way the "trust" claim earns its keep.

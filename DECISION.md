@@ -94,7 +94,12 @@ addresses, electrical limits) with provenance. That is the moat; the substrate a
 validator are now de-risked enough to build on.
 
 ### Concrete next steps
-1. **Pin the toolchain** (atopile 0.12.5 / Python 3.13) in a setup script.
+1. ✅ **DONE — pinned the toolchain** in a setup script. `scripts/setup.sh` (+
+   `setup.ps1`) installs **atopile 0.12.5 on Python 3.13** via `uv`, plus the spike
+   Python deps; `ato.yaml` floor is `>=0.12.5` and `.python-version` pins 3.13 (which
+   transitively caps atopile to the 0.12.x line, since 0.13+ needs Python 3.14).
+   `scripts/check_toolchain.py` lints that every pin agrees (offline CI step), and a
+   `toolchain` CI job proves the pinned install resolves.
 2. ✅ **DONE — authored the first real verified IC blocks** via `ato create part`
    (AMS1117-3.3 LDO `C6186`, AT24C256 EEPROM `C6482`), wrapped with typed interfaces
    in `spike/atopile/verified_slice.ato`. **The BOM now resolves both ICs with real
