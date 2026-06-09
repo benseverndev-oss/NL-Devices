@@ -139,8 +139,8 @@ the substrate (or a hybrid).
 | 2 ✅ | Implement the 3 blocks + compose, in **SKiDL** (`@subcircuit`, `ERC()`, `generate_netlist`) — **DONE**, ERC clean, real ICs in netlist ([`spike/skidl/sensor_node_skidl.py`](./spike/skidl/sensor_node_skidl.py)) | Python slice + netlist |
 | 3 ✅ | Build the **thin seam-checker** (power-domain compat, I²C bus rules) — **DONE** ([`spike/seam_validator.py`](./spike/seam_validator.py), ~150 lines) | validator module |
 | 4 ✅ | Inject the **3 faults**; confirm each caught + correct passes — **DONE**, validator caught all 3 exactly; atopile natively catches Fault 1 only | fault-detection log |
-| 5 | **PySpice** DC op-point on the power rail; assert Vout ≈ 3V3 ± tol | sim assertion |
-| 6 | Fill the **scorecard**, write decision + the "build vs. free" boundary for the validator | decision memo |
+| 5 ✅ | **ngspice** DC op-point on the rail (PySpice dropped) — **DONE**: rail=3.295V (in tol), I2C pull-up=0.701mA ([`spike/skidl/rail_check.py`](./spike/skidl/rail_check.py)) | sim assertion |
+| 6 ✅ | Fill the **scorecard**, write decision — **DONE**: [`DECISION.md`](./DECISION.md) — adopt **atopile + custom seam-validator + ngspice harness** | decision memo |
 
 ---
 

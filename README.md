@@ -15,7 +15,10 @@ is the interface.
 - **[BUSINESS.md](./BUSINESS.md)** — monetization & business-model strategy
   (the layered, sequenced revenue model).
 - **[SPIKE.md](./SPIKE.md)** — Phase-0 engineering spike: verified blocks +
-  seam validation, and the atopile-vs-SKiDL bake-off.
+  seam validation, and the atopile-vs-SKiDL bake-off. *(Steps 0–6 complete — see
+  `spike/`.)*
+- **[DECISION.md](./DECISION.md)** — spike decision memo: scorecard + chosen
+  substrate/architecture (atopile + custom seam-validator + ngspice harness).
 - **[RESEARCH.md](./RESEARCH.md)** — cited prior-art & competitive research with
   confidence levels behind every decision.
 
