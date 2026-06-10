@@ -64,6 +64,12 @@ def spi_baseline() -> sv.Design:
     )
 
 
+def _bad_spi_no_controller() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_no_controller"
+    d.spi_buses[0].nodes = [n for n in d.spi_buses[0].nodes if n.role != "controller"]
+    return d
+
+
 def _bad_spi_cs_collision() -> sv.Design:
     d = spi_baseline(); d.name = "bad_spi_cs_collision"
     d.rails[1].sinks.append(("flash_b", 3.3, 0.05))   # power it: single-fault
@@ -159,6 +165,8 @@ CORPUS = [
     # bad SPI, covered
     {"build": _bad_spi_cs_collision, "kind": "bad_covered", "expect": {"spi-chip-select-unique"},
      "note": "two SPI peripherals share CS cs0"},
+    {"build": _bad_spi_no_controller, "kind": "bad_covered", "expect": {"spi-single-controller"},
+     "note": "SPI bus with no master"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},

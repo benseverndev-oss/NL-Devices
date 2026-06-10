@@ -217,6 +217,18 @@ def check_part_rail_rating(d: Design) -> list[str]:
     return errs
 
 
+def check_spi_single_controller(d: Design) -> list[str]:
+    """Each SPI bus needs exactly one controller (master): zero = no master drives it,
+    two = clock/CS contention."""
+    errs = []
+    for b in d.spi_buses:
+        controllers = [n.block for n in b.nodes if n.role == 'controller']
+        if len(controllers) != 1:
+            errs.append(f"SPI: bus '{b.name}' has {len(controllers)} controllers "
+                        f"({', '.join(controllers) or 'none'}); need exactly one")
+    return errs
+
+
 def check_spi_chip_select_unique(d: Design) -> list[str]:
     """Every SPI peripheral needs its own chip-select; two sharing a CS line would both
     respond at once. A peripheral with no CS is also flagged."""
@@ -272,7 +284,8 @@ CHECKS = [("power-domain", check_power_domains),
           ("part-rail-rating", check_part_rail_rating),
           ("power-connectivity", check_power_connectivity),
           ("i2c-multimaster", check_i2c_multimaster),
-          ("spi-chip-select-unique", check_spi_chip_select_unique)]
+          ("spi-chip-select-unique", check_spi_chip_select_unique),
+          ("spi-single-controller", check_spi_single_controller)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:
