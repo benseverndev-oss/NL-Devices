@@ -52,44 +52,6 @@ jobs:
         # (and runs the offline consistency gate at the end). ngspice is optional here.
         run: bash scripts/setup.sh
 
-  make-spi-part:
-    # TEMPORARY one-shot job (Workstream 2, Phase 1). Creates the real W25Q128
-    # SPI flash part (LCSC C97521, SOIC-8) via `ato create part`, ingests its
-    # ground-truth into parts_snapshot.json, and commits both back to the branch
-    # with [skip ci]. Mirrors the part-fetch scaffolding the existing parts used.
-    # REMOVE this job once the part dir + snapshot are committed.
-    name: Create + ingest W25Q128 SPI flash part (one-shot)
-    if: github.ref == 'refs/heads/feat/spi-routed-board'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.13" }
-      - name: Install pinned atopile toolchain
-        run: bash scripts/setup.sh
-      - name: Install spike Python deps (partdb ingest needs requests + pyyaml)
-        run: pip install -r spike/requirements.txt && pip install requests
-      - name: Create the W25Q128 part (ato create part, non-interactive)
-        working-directory: spike/atopile
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          ato create part --search C97521 --accept-single
-          echo "== generated part dirs =="
-          ls -la elec/src/parts/
-      - name: Ingest C97521 into the ground-truth snapshot (EasyEDA + LCSC)
-        working-directory: spike
-        run: python3 partdb.py ingest C97521
-      - name: Commit the part dir + updated snapshot back to the branch
-        run: |
-          git config user.name benzsevern
-          git config user.email benzsevern@gmail.com
-          git add spike/atopile/elec/src/parts/ spike/parts_snapshot.json
-          git status --short
-          git commit -m "Create + ingest W25Q128 (C97521) SPI flash part [skip ci]" || { echo "nothing to commit"; exit 0; }
-          git push
-
   route:
     name: Autoroute → routed copper (verified board)
     runs-on: ubuntu-latest
@@ -141,3 +103,22 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
+      - name: ato build spi_node (STM32 SPI controller + W25Q128 flash)
+        # Second routed board = spi_slice.ato:App (same AMS1117 LDO C6186 + STM32F103C8T6
+        # C8734 brain, but driving a real W25Q128 SPI NOR flash C97521 over SPI1). The
+        # W25Q128 3D model is committed under elec/src/parts/Winbond_Elec_W25Q128JVSIQ/**,
+        # so this build is reproducible (only the LCSC part-pick hits the network).
+        working-directory: spike/atopile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ato build -b spi_node
+          echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Route the SPI board (place → DSN → freerouting → SES → DRC → Gerbers)
+        # HARD GATE (independent of the verified board): 0 unrouted + 0 DRC + all copper
+        # layers. Separate --work dir so artifacts don't clobber the verified route.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/spi_node/spi_node.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route_spi
