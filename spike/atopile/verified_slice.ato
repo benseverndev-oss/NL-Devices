@@ -1,74 +1,13 @@
-# First REAL verified blocks: wrap atopile atomic parts (real LCSC MPNs, created
-# via `ato create part`) with TYPED interfaces + invariants. This is the moat
-# artifact: a block that is both manufacturable (real part) and typed (seam-checkable).
+# The `verified` build target's top App. Composes the THREE real verified blocks
+# (LDO + STM32 MCU + EEPROM) from the shared library `verified_lib.ato` — the same
+# blocks the orchestrator's codegen emits — so the routed board and the composed board
+# share ONE definition. (This file previously re-defined its own chip-less MCU stub;
+# that stub is gone — the board now has a real brain.)
 
 import ElectricPower
 import I2C
-import Capacitor
-import Resistor
-from "parts/Advanced_Monolithic_Systems_AMS1117_3_3/Advanced_Monolithic_Systems_AMS1117_3_3.ato" import Advanced_Monolithic_Systems_AMS1117_3_3_package
-from "parts/Microchip_Tech_AT24C256C_SSHL_T/Microchip_Tech_AT24C256C_SSHL_T.ato" import Microchip_Tech_AT24C256C_SSHL_T_package
 
-# --- Verified Block: 3V3 LDO power supply (real AMS1117-3.3, LCSC C6186) ------
-module PowerBlock:
-    power_in = new ElectricPower
-    power_out = new ElectricPower
-
-    ldo = new Advanced_Monolithic_Systems_AMS1117_3_3_package
-    # map the atomic part's pins onto the typed power interfaces
-    ldo.VIN ~ power_in.hv
-    ldo.GND ~ power_in.lv
-    ldo.VOUT ~ power_out.hv
-    ldo.GND ~ power_out.lv
-
-    # the block author certifies the part's guaranteed rail
-    power_out.voltage = 3.3V +/- 2%
-
-    cap_in = new Capacitor
-    cap_out = new Capacitor
-    cap_in.capacitance = 1uF +/- 20%
-    cap_out.capacitance = 10uF +/- 20%
-    cap_in.unnamed[0] ~ power_in.hv
-    cap_in.unnamed[1] ~ power_in.lv
-    cap_out.unnamed[0] ~ power_out.hv
-    cap_out.unnamed[1] ~ power_out.lv
-
-    assert power_out.voltage within 3.3V +/- 5%
-
-# --- Verified Block: MCU/I2C controller (decoupling + bus pull-ups) ----------
-module McuBlock:
-    power = new ElectricPower
-    i2c = new I2C
-    cap = new Capacitor
-    cap.capacitance = 100nF +/- 20%
-    cap.unnamed[0] ~ power.hv
-    cap.unnamed[1] ~ power.lv
-    i2c.scl.reference ~ power
-    i2c.sda.reference ~ power
-    scl_pullup = new Resistor
-    sda_pullup = new Resistor
-    scl_pullup.resistance = 4.7kohm +/- 5%
-    sda_pullup.resistance = 4.7kohm +/- 5%
-    scl_pullup.unnamed[0] ~ i2c.scl.line
-    scl_pullup.unnamed[1] ~ power.hv
-    sda_pullup.unnamed[0] ~ i2c.sda.line
-    sda_pullup.unnamed[1] ~ power.hv
-    assert power.voltage within 3.3V +/- 5%
-
-# --- Verified Block: I2C sensor (real AT24C256 EEPROM, LCSC C6482) -----------
-module SensorBlock:
-    power = new ElectricPower
-    i2c = new I2C
-    eeprom = new Microchip_Tech_AT24C256C_SSHL_T_package
-    eeprom.VCC ~ power.hv
-    eeprom.GND ~ power.lv
-    eeprom.SCL ~ i2c.scl.line
-    eeprom.SDA ~ i2c.sda.line
-    eeprom.A0 ~ power.lv      # address pins low -> 0x50
-    eeprom.A1 ~ power.lv
-    eeprom.A2 ~ power.lv
-    eeprom.WP ~ power.lv      # write-protect off
-    assert power.voltage within 3.3V +/- 5%
+from "verified_lib.ato" import PowerBlock, McuBlock, EepromBlock
 
 module App:
     power5v = new ElectricPower
@@ -77,12 +16,19 @@ module App:
 
     psu = new PowerBlock
     mcu = new McuBlock
-    sensor = new SensorBlock
+    sensor = new EepromBlock
 
     psu.power_in ~ power5v
     psu.power_out ~ power3v3
     mcu.power ~ power3v3
     sensor.power ~ power3v3
+
+    # EEPROM address straps: A0/A1/A2 low -> I2C address 0x50.
+    # (EepromBlock straps WP internally but leaves A0/A1/A2 to the parent, exactly as
+    # codegen does in the orchestrator path.)
+    sensor.eeprom.A0 ~ power3v3.lv
+    sensor.eeprom.A1 ~ power3v3.lv
+    sensor.eeprom.A2 ~ power3v3.lv
 
     i2c_bus = new I2C
     i2c_bus.frequency = 400kHz

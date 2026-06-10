@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 FIXTURE = HERE / "fixtures" / "verified" / "verified.kicad_pcb"
 MARGIN_MM = 5.0          # board-edge keepout around the placement bbox
-SPACING_MM = 2.0         # min edge-to-edge gap between courtyards
+SPACING_MM = 3.0         # min edge-to-edge gap between courtyards
 
 
 @dataclass
