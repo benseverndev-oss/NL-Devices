@@ -100,8 +100,9 @@ def _bad_bus_timing() -> sv.Design:
 
 
 # -- known-bad designs the gate currently CANNOT see (measured false negatives) --
-def _uncov_multimaster() -> sv.Design:
-    d = good_baseline(); d.name = "uncov_multimaster"
+def _bad_multimaster() -> sv.Design:
+    d = good_baseline(); d.name = "bad_multimaster"
+    d.rails[1].sinks.append(("mcu2", 3.3, 0.05))   # power it: isolate the multimaster fault
     d.buses[0].nodes.append(sv.I2CNode("mcu2", "controller", provides_pullups=False))
     return d
 
@@ -139,8 +140,8 @@ CORPUS = [
     {"build": _bad_bus_timing,     "kind": "bad_covered", "expect": {"i2c-bus-timing"},    "note": "47kΩ pull-up @400kHz"},
     {"build": _bad_part_rail_rating,"kind": "bad_covered","expect": {"part-rail-rating"},  "note": "5V-only part on the 3.3V rail (vs ground truth)"},
     # bad, UNCOVERED (measured false negatives — the honest roadmap)
-    {"build": _uncov_multimaster,  "kind": "bad_uncovered", "missing": "i2c-multimaster",
-     "note": "two controllers on one bus — no multi-master check"},
+    {"build": _bad_multimaster, "kind": "bad_covered", "expect": {"i2c-multimaster"},
+     "note": "two controllers on one bus — i2c-multimaster must fire"},
     {"build": _bad_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
      "note": "active device on no rail — power-connectivity must fire"},
 ]
