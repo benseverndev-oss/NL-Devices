@@ -92,7 +92,7 @@ def run_freerouting(jar: str, dsn: str, ses: str) -> str:
     # freerouting 2.x runs headless in CLI mode when given both -de (input .dsn) and
     # -do (output .ses). -Djava.awt.headless avoids the GUI screen-resolution probe.
     return _run(["java", "-Djava.awt.headless=true", "-jar", jar,
-                 "-de", dsn, "-do", ses, "-mp", "100"])
+                 "-de", dsn, "-do", ses, "-mp", "200"])
 
 
 def import_ses(specctra: str, in_pcb: str, ses: str, out_pcb: str) -> None:
