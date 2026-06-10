@@ -57,7 +57,7 @@ class SPINode:
     block: str
     role: str                        # 'controller' | 'peripheral'
     chip_select: str | None = None   # CS net id (peripherals only)
-    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — modelled, NOT yet checked
+    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — checked by spi-mode-compat
 
 
 @dataclass

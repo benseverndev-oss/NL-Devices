@@ -67,8 +67,8 @@ def spi_baseline() -> sv.Design:
 def _bad_spi_mode_mismatch() -> sv.Design:
     d = spi_baseline(); d.name = "bad_spi_mode_mismatch"
     d.rails[1].sinks.append(("flash_b", 3.3, 0.05))
-    # mode 3 peripheral vs the mode-0 controller — representable (SPINode.mode) but the
-    # gate has no spi-mode-compat check, so it sails through (a measured false negative).
+    # mode-3 peripheral vs the mode-0 controller — caught by check_spi_mode_compat
+    # (CPOL/CPHA mismatch); this fixture is its regression guard.
     d.spi_buses[0].nodes.append(sv.SPINode("flash_b", "peripheral", chip_select="cs1", mode=3))
     return d
 
