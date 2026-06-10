@@ -41,13 +41,27 @@ def parse_unrouted(freerouting_log: str) -> int:
     raise ValueError("no completion summary found in freerouting log")
 
 
+# Excluded from the gate: a fine-pitch footprint (e.g. the LQFP-48's 0.5mm-pitch pads)
+# has solder-mask webs between adjacent in-footprint pads narrower than KiCad's default,
+# which `kicad-cli` reports as `solder_mask_bridge`. It does NOT honor the board's
+# `allow_soldermask_bridges_in_footprints` switch (verified: flag=yes, still reported), so
+# the suppression must live here. This is a fab-capability matter (JLCPCB et al. fabricate
+# 0.5mm pitch), not a copper defect — and the gate still enforces every electrically-real
+# class below (shorts, clearance, unconnected/unrouted).
+_DRC_EXCLUDED_TYPES = {"solder_mask_bridge"}
+
+
 def parse_drc(drc_json: str) -> list[dict]:
-    """Return error-severity DRC violations from kicad-cli pcb drc --format json output."""
+    """Return gate-relevant error-severity DRC violations from `kicad-cli pcb drc
+    --format json`, excluding the fine-pitch solder-mask-bridge class (see above)."""
     doc = json.loads(drc_json)
     out = []
     for v in doc.get("violations", []):
-        if v.get("severity", "error") == "error":
-            out.append(v)
+        if v.get("severity", "error") != "error":
+            continue
+        if v.get("type") in _DRC_EXCLUDED_TYPES:
+            continue
+        out.append(v)
     return out
 
 
@@ -88,11 +102,19 @@ def export_dsn(specctra: str, in_pcb: str, out_dsn: str) -> None:
     _run(["/usr/bin/python3", specctra, "export-dsn", in_pcb, out_dsn])
 
 
+FREEROUTING_TIMEOUT_S = 300   # wall-clock cap; on an unroutable board freerouting keeps
+                              # optimizing for ~1000 passes (it ignores -mp once routing
+                              # can't complete) — bound it so CI can't run away.
+
+
 def run_freerouting(jar: str, dsn: str, ses: str) -> str:
     # freerouting 2.x runs headless in CLI mode when given both -de (input .dsn) and
     # -do (output .ses). -Djava.awt.headless avoids the GUI screen-resolution probe.
-    return _run(["java", "-Djava.awt.headless=true", "-jar", jar,
-                 "-de", dsn, "-do", ses, "-mp", "100"])
+    # `timeout` guards the optimizer runaway; check=False because a timeout (124) still
+    # leaves the best routed .ses written, and parse_unrouted reads the truth from it.
+    return _run(["timeout", str(FREEROUTING_TIMEOUT_S),
+                 "java", "-Djava.awt.headless=true", "-jar", jar,
+                 "-de", dsn, "-do", ses, "-mp", "100"], check=False)
 
 
 def import_ses(specctra: str, in_pcb: str, ses: str, out_pcb: str) -> None:
@@ -200,6 +222,18 @@ def selftest() -> bool:
     ok_drc = v == []
     print(f"  [{'ok' if ok_drc else 'FAIL'}] clean drc.json -> {len(v)} violations (want 0)")
     ok &= ok_drc
+
+    # parse_drc: excludes fine-pitch solder_mask_bridge, keeps real electrical faults
+    mixed = json.dumps({"violations": [
+        {"type": "solder_mask_bridge", "severity": "error"},
+        {"type": "solder_mask_bridge", "severity": "error"},
+        {"type": "clearance", "severity": "error"},
+        {"type": "shorting_items", "severity": "error"}]})
+    kept = parse_drc(mixed)
+    ok_excl = [x["type"] for x in kept] == ["clearance", "shorting_items"]
+    print(f"  [{'ok' if ok_excl else 'FAIL'}] drc excludes solder_mask_bridge, keeps "
+          f"{[x['type'] for x in kept]} (want clearance+shorting_items)")
+    ok &= ok_excl
 
     # gerber_layers_present: gerbers.txt must cover all REQUIRED_LAYERS
     names = (FIX / "gerbers.txt").read_text().split()

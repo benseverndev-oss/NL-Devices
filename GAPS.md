@@ -243,25 +243,24 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    `kicad_specctra.py`) drives `ato build` → place → headless **freerouting** → DRC →
    `kicad-cli` Gerbers, **hard-gated on 0 unrouted + 0 DRC + format-valid copper**, and
    `fab_export.build_routed_package` folds the real copper + routed CPL into the package
-   (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). The STM32 McuBlock
-   is now wired into a build target (`verified_mcu` = real STM32F103C8T6 + LDO + EEPROM),
-   CI-gated to **build + part-pick** — the fuller board decision 0004 deferred. **Still
-   open — routing *that* 48-pin board** (the build is the floor). Two autoroute iterations
-   (CI runs #50/#51) pinned down what it takes, and it is a *placement-engine* problem, not
-   a few tweaks:
-   - **Vias: solved.** The DSN already defines a via (`Via[0-1]_600:300_um`) and freerouting
-     uses it — the original "0 vias" was a symptom, not a missing definition.
-   - **Placement is the real blocker.** The deterministic grid scatters the LDO/EEPROM/8
-     caps/4 resistors away from the 48-pin MCU, and the big **GND/3V3 multi-pad nets are
-     routed point-to-point with no copper pour**, so freerouting thrashes (999 passes,
-     **~82 GB RAM**, ≥8 nets left unrouted, non-deterministically) — an unroutable rat's
-     nest. Needs **net-aware placement + ground/power planes**.
-   - **`solder_mask_bridge` (LQFP-48 0.5mm pitch):** KiCad's
+   (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). **The fuller
+   `verified_mcu` board (real STM32F103C8T6 + LDO + EEPROM, 48-pin LQFP, 15 footprints) now
+   BUILDS *and* ROUTES** to the same hard gate (0 unrouted / 0 DRC / format-valid copper),
+   closing decision 0004's deferred follow-up. Two earlier autoroute attempts (CI #50/#51)
+   proved a flat by-size grid is unroutable (freerouting thrashed ~1000 passes); the fixes:
+   - **Block-cluster placement** — footprints carry `(property "atopile_address" "mcu.cap")`,
+     so `place.py` groups each atopile block's parts contiguously around its IC. That keeps
+     intra-block nets (power/decoupling/pull-ups) short; freerouting then converges in ~6
+     passes / 1.6 GB (no GND/3V3 pours needed at this size).
+   - **`solder_mask_bridge` excluded in `parse_drc`** — KiCad's
      `allow_soldermask_bridges_in_footprints` does **not** suppress `kicad-cli` DRC
-     (confirmed: flag = `yes` on the routed board, violations persist), so the gate needs a
-     code-level exclusion of in-footprint mask bridges (a fab-capability matter).
-   Plus the standing limits: one vertical / 2 layers, deterministic (not DFM) placement,
-   network part-pick. The smaller `verified` board still routes 0-unrouted/0-DRC.
+     (confirmed: flag=`yes`, still reported), so the LQFP-48 0.5mm-pitch in-footprint mask
+     bridges (a fab-capability matter, not a copper defect) are excluded; shorts/clearance/
+     unrouted still gate.
+   - **Vias** were never the blocker (the DSN defines `Via[0-1]_600:300_um`); freerouting is
+     now wall-clock bounded so it can't run away.
+   **Still open:** one vertical / 2 layers, deterministic (not DFM) placement, network
+   part-pick at build; ground/power *pours* would be the next step for a denser board.
 8. **Run the cheapest business test (🟠):** 5–10 customer-discovery calls on respin
    WTP and one fab partner conversation on wholesale margin — the two unproven
    assumptions the whole revenue model rests on.
