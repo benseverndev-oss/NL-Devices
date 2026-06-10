@@ -112,3 +112,13 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
+      - name: Route verified_mcu (real STM32 board → routed copper)
+        # Same HARD GATE on the fuller MCU+LDO+EEPROM board (48-pin LQFP, ~15 footprints,
+        # 2 layers). The pipeline is board-agnostic; the deterministic grid placement
+        # scales with footprint count, and the STM32 (C8734) reconciles to the snapshot.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/verified_mcu/verified_mcu.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route_mcu
