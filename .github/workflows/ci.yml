@@ -82,8 +82,9 @@ jobs:
             "https://github.com/freerouting/freerouting/releases/download/v2.1.0/freerouting-2.1.0.jar"
           java -jar freerouting.jar --help 2>&1 | head -40 || true
       - name: ato build verified (reproducible — 3D models committed)
-        # Board = verified_slice.ato:App (real AMS1117 LDO C6186 + AT24C256 EEPROM C6482
-        # + decoupling + I2C pull-ups). The per-part 3D models are committed under
+        # Board = verified_slice.ato:App (real AMS1117 LDO C6186 + STM32F103C8T6 MCU
+        # C8734 + AT24C256 EEPROM C6482 + decoupling + I2C pull-ups). The per-part 3D
+        # models are committed under
         # elec/src/parts/**, so this build is reproducible with no network model fetch
         # (only the LCSC part-pick hits the network). Produces the unrouted .kicad_pcb
         # the routing pipeline (Task 4) consumes.

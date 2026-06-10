@@ -14,10 +14,12 @@ This harness answers that with a number. It runs a labelled corpus through
                     EXPECT it to slip through; that is a measured false NEGATIVE. These
                     do not fail CI — they are the honest roadmap of what's left to build.
 
-The point is the `bad_uncovered` set: it deliberately includes faults *outside* the
-three the validator was built around, so the reported false-negative rate is real and
-not self-congratulatory. CI gates on regressions (good FP / covered miss); the FN
-inventory is published, not hidden.
+The `bad_uncovered` set keeps the reported false-negative rate honest: faults *outside*
+the ones the validator was built around, that we expect to slip through. CI gates on
+regressions (good FP / covered miss); the FN inventory is published, not hidden. As of
+the power-connectivity + i2c-multimaster checks that set is empty (measured FN rate
+0/9), but the category is retained: the next representable fault we find lives here
+until its check exists.
 
 Run:  python3 validator_corpus.py
 """
@@ -99,7 +101,7 @@ def _bad_bus_timing() -> sv.Design:
     return d
 
 
-# -- known-bad designs the gate currently CANNOT see (measured false negatives) --
+# -- former measured false-negatives, now CLOSED (covered regression guards) ----
 def _bad_multimaster() -> sv.Design:
     d = good_baseline(); d.name = "bad_multimaster"
     d.rails[1].sinks.append(("mcu2", 3.3, 0.05))   # power it: isolate the multimaster fault
@@ -109,8 +111,8 @@ def _bad_multimaster() -> sv.Design:
 
 def _bad_floating_power() -> sv.Design:
     d = good_baseline(); d.name = "bad_floating_power"
-    # an active device on the bus that no rail powers — the gate has no
-    # "every block must be on a rail" connectivity check, so it sails through.
+    # an active device on the bus that no rail powers. check_power_connectivity now
+    # catches this; this fixture is its regression guard.
     d.buses[0].nodes.append(sv.I2CNode("orphan", "peripheral", address=0x51))
     return d
 
@@ -139,7 +141,7 @@ CORPUS = [
     {"build": _bad_reserved_address,"kind": "bad_covered","expect": {"i2c-reserved-addr"}, "note": "address 0x7A reserved"},
     {"build": _bad_bus_timing,     "kind": "bad_covered", "expect": {"i2c-bus-timing"},    "note": "47kΩ pull-up @400kHz"},
     {"build": _bad_part_rail_rating,"kind": "bad_covered","expect": {"part-rail-rating"},  "note": "5V-only part on the 3.3V rail (vs ground truth)"},
-    # bad, UNCOVERED (measured false negatives — the honest roadmap)
+    # formerly UNCOVERED FNs, now COVERED by the two new checks (regression guards)
     {"build": _bad_multimaster, "kind": "bad_covered", "expect": {"i2c-multimaster"},
      "note": "two controllers on one bus — i2c-multimaster must fire"},
     {"build": _bad_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
