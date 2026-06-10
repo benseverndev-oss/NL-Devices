@@ -64,6 +64,13 @@ def spi_baseline() -> sv.Design:
     )
 
 
+def _bad_spi_cs_collision() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_cs_collision"
+    d.rails[1].sinks.append(("flash_b", 3.3, 0.05))   # power it: single-fault
+    d.spi_buses[0].nodes.append(sv.SPINode("flash_b", "peripheral", chip_select="cs0", mode=0))
+    return d
+
+
 def _peripheral(b: sv.I2CBus, name: str) -> sv.I2CNode:
     return next(n for n in b.nodes if n.block == name)
 
@@ -149,6 +156,9 @@ CORPUS = [
     {"build": good_baseline,    "kind": "good", "expect": set(), "note": "nominal sensor node"},
     {"build": _good_fast_bus,   "kind": "good", "expect": set(), "note": "400kHz, stiff pull-up — timing OK"},
     {"build": spi_baseline, "kind": "good", "expect": set(), "note": "SPI: MCU + flash, distinct CS"},
+    # bad SPI, covered
+    {"build": _bad_spi_cs_collision, "kind": "bad_covered", "expect": {"spi-chip-select-unique"},
+     "note": "two SPI peripherals share CS cs0"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},

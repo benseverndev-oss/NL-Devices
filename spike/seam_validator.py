@@ -217,6 +217,25 @@ def check_part_rail_rating(d: Design) -> list[str]:
     return errs
 
 
+def check_spi_chip_select_unique(d: Design) -> list[str]:
+    """Every SPI peripheral needs its own chip-select; two sharing a CS line would both
+    respond at once. A peripheral with no CS is also flagged."""
+    errs = []
+    for b in d.spi_buses:
+        seen: dict[str, str] = {}
+        for n in b.nodes:
+            if n.role != 'peripheral':
+                continue
+            if n.chip_select is None:
+                errs.append(f"SPI: bus '{b.name}' peripheral '{n.block}' has no chip-select")
+            elif n.chip_select in seen:
+                errs.append(f"SPI: bus '{b.name}' chip-select '{n.chip_select}' shared by "
+                            f"'{seen[n.chip_select]}' and '{n.block}'")
+            else:
+                seen[n.chip_select] = n.block
+    return errs
+
+
 def check_i2c_multimaster(d: Design) -> list[str]:
     """At most one controller (bus master) per I2C bus. Two masters sharing SCL/SDA is
     an arbitration / clock-ownership hazard the single-controller topology here does
@@ -252,7 +271,8 @@ CHECKS = [("power-domain", check_power_domains),
           ("i2c-bus-timing", check_i2c_bus_capacitance),
           ("part-rail-rating", check_part_rail_rating),
           ("power-connectivity", check_power_connectivity),
-          ("i2c-multimaster", check_i2c_multimaster)]
+          ("i2c-multimaster", check_i2c_multimaster),
+          ("spi-chip-select-unique", check_spi_chip_select_unique)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:
