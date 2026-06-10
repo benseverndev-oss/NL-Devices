@@ -246,6 +246,7 @@ Watch the run (`gh run list --branch feat/netlist-guard --limit 1 --json databas
 ```yaml
   make-golden:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/feat/netlist-guard'   # one-shot, this branch only (mirrors make-spi-part)
     permissions:
       contents: write
     steps:
