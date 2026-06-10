@@ -7,10 +7,9 @@ seam-validation layer is something we own. This module shows it is small,
 deterministic, and substrate-independent: it runs over a typed block-graph (our
 "verified block" contract from SPIKE.md §3), not over any one EDA tool's internals.
 
-It checks the three SPIKE.md §4 seams:
-  1. power-domain compatibility   (the rail's voltage must lie within each sink's range)
-  2. I2C pull-ups present          (some participant must pull SCL/SDA up)
-  3. I2C address uniqueness        (no two peripherals share an address)
+It checks the SPIKE.md §4 seams — now 11 checks across power, I2C, and SPI topology
+(see the `CHECKS` registry). The original three: power-domain compatibility, I2C
+pull-ups present, I2C address uniqueness.
 
 Run:  python3 seam_validator.py
 """
@@ -65,7 +64,7 @@ class SPINode:
 class SPIBus:
     name: str
     nodes: list[SPINode] = field(default_factory=list)
-    speed_hz: int = 1_000_000
+    speed_hz: int = 1_000_000   # modelled, not yet checked (no SPI timing check yet)
 
 
 @dataclass
@@ -80,7 +79,7 @@ def _interval(v: float, tol: float) -> tuple[float, float]:
     return (v * (1 - tol), v * (1 + tol))
 
 
-# ---- the three seam checks ---------------------------------------------------
+# ---- the original three seam checks ------------------------------------------
 def check_power_domains(d: Design) -> list[str]:
     errs = []
     for r in d.rails:

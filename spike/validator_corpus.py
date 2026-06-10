@@ -16,10 +16,10 @@ This harness answers that with a number. It runs a labelled corpus through
 
 The `bad_uncovered` set keeps the reported false-negative rate honest: faults *outside*
 the ones the validator was built around, that we expect to slip through. CI gates on
-regressions (good FP / covered miss); the FN inventory is published, not hidden. As of
-the power-connectivity + i2c-multimaster checks that set is empty (measured FN rate
-0/9), but the category is retained: the next representable fault we find lives here
-until its check exists.
+regressions (good FP / covered miss); the FN inventory is published, not hidden.
+Broadening the gate to SPI surfaced one representable fault it still misses —
+`spi-mode-compat` (measured FN rate 1/13) — which now lives in this set until its check
+is built. That is the next check to add.
 
 Run:  python3 validator_corpus.py
 """
