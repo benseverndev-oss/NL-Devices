@@ -143,7 +143,8 @@ Add SPI fixtures (mutating a fresh SPI baseline):
   4-wire SPI: pin1 /CS, pin2 DO(MISO), pin3 /WP, pin4 GND, pin5 DI(MOSI), pin6 CLK,
   pin7 /HOLD, pin8 VCC.
 - `ato create part -s C97521 -a` in CI → commit `.ato` / `.kicad_sym` / `.kicad_mod` /
-  `.step` under `elec/src/parts/**` (the STM32 pattern, decision 0005).
+  `.step` under `elec/src/parts/**` (the committed per-part 3D-model pattern used for the
+  STM32 / AMS1117 / AT24C256 parts; see `DECISION.md`).
 - Ingest into `parts_snapshot.json` (`partdb.py ingest`, EasyEDA fetch) so `verify_parts`
   passes once the flash block is bound. WS2 also flips `spi_flash_w25q.yaml` from abstract
   to bound (`lcsc: C97521`).
