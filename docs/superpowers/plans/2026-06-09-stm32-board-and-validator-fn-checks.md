@@ -174,7 +174,7 @@ Rename `_uncov_floating_power` → `_bad_floating_power` (and its `d.name = "bad
 - [ ] **Step 2: Run the corpus to verify it fails**
 
 Run: `python3 spike/validator_corpus.py`
-Expected: **FAIL** — `MISSED: bad 'bad_floating_power' expected ['power-connectivity'], got ∅` and `RESULT: FAIL` (exit 1), because the check doesn't exist yet.
+Expected: **FAIL** (exit 1), because the check doesn't exist yet. The `bad_floating_power` row shows `MISSED expected ['power-connectivity'], got ∅`; the regressions list at the bottom shows `MISSED: bad 'bad_floating_power' expected ['power-connectivity'], got []` (note: the row renders `∅`, the regressions line renders `[]` — same thing); `RESULT: FAIL`.
 
 - [ ] **Step 3: Implement `check_power_connectivity`** — in `spike/seam_validator.py`, add this after `check_part_rail_rating` (before the `CHECKS` list):
 
@@ -212,7 +212,7 @@ def _bad_addr_collision() -> sv.Design:
 - [ ] **Step 6: Run the corpus to verify it passes**
 
 Run: `python3 spike/validator_corpus.py`
-Expected: **PASS** (exit 0). `bad_floating_power` shows `caught [power-connectivity]`; `bad_addr_collision` still shows `caught [i2c-address]` only; 0 false positives; `RESULT: PASS`. (`uncov_multimaster` is still a published FN at this point — that's fine.)
+Expected: **PASS** (exit 0). `bad_floating_power` shows `caught [power-connectivity]`; `bad_addr_collision` still shows `caught [i2c-address]` only; 0 false positives; `RESULT: PASS`. (Note: at this point `power-connectivity` also fires on the still-unpowered `mcu2` in the multimaster fixture, so the `uncov_multimaster` row shows `now caught [power-connectivity] — reclassify as covered` — a non-regressing "surprise", not a failure — and the FN rate already reads 0/9. B2 converts that fixture into a clean single-fault `i2c-multimaster` guard.)
 
 - [ ] **Step 7: Commit**
 
@@ -251,7 +251,7 @@ CORPUS entry becomes:
 - [ ] **Step 2: Run the corpus to verify it fails**
 
 Run: `python3 spike/validator_corpus.py`
-Expected: **FAIL** — `MISSED: bad 'bad_multimaster' expected ['i2c-multimaster'], got ∅`, exit 1.
+Expected: **FAIL** (exit 1). `mcu2` is now powered, so `power-connectivity` does not fire — the case is clean-red on the missing multimaster check only: the `bad_multimaster` row shows `MISSED expected ['i2c-multimaster'], got ∅` (regressions line: `got []`), `RESULT: FAIL`.
 
 - [ ] **Step 3: Implement `check_i2c_multimaster`** — in `spike/seam_validator.py`, add after `check_power_connectivity`:
 
