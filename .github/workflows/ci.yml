@@ -113,19 +113,13 @@ jobs:
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
       - name: Route verified_mcu (real STM32 board → routed copper)
-        # HARD GATE on the fuller MCU+LDO+EEPROM board (48-pin LQFP). place.py now clusters
-        # each atopile block's parts around its IC (short intra-block nets), parse_drc
-        # excludes fine-pitch solder_mask_bridge, and freerouting is wall-clock bounded.
+        # HARD GATE on the fuller MCU+LDO+EEPROM board (48-pin LQFP, 15 footprints). Routes
+        # 0-unrouted/0-DRC because place.py clusters each atopile block's parts around its IC
+        # (short intra-block nets → freerouting converges in ~6 passes), parse_drc excludes
+        # fine-pitch solder_mask_bridge, and freerouting is wall-clock bounded.
         run: |
           python3 spike/route.py --pipeline \
             --board spike/atopile/elec/layout/verified_mcu/verified_mcu.kicad_pcb \
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route_mcu
-      - name: Diagnose verified_mcu route (convergence + residual DRC)
-        if: always()
-        run: |
-          echo "=== freerouting final unrouted ==="
-          grep -E 'incomplete_count|pass #' spike/build/route_mcu/freerouting.log | tail -4 || true
-          echo "=== DRC violation types (after solder_mask exclusion) ==="
-          python3 -c "import json,collections; d=json.load(open('spike/build/route_mcu/drc.json')); print(collections.Counter(v.get('type') for v in d.get('violations',[])))" || true
