@@ -75,6 +75,7 @@ def _bad_no_pullups() -> sv.Design:
 
 def _bad_addr_collision() -> sv.Design:
     d = good_baseline(); d.name = "bad_addr_collision"
+    d.rails[1].sinks.append(("sensor_b", 3.3, 0.05))   # power it: keep this a single-fault case
     d.buses[0].nodes.append(sv.I2CNode("sensor_b", "peripheral", address=0x50))
     return d
 
@@ -105,8 +106,8 @@ def _uncov_multimaster() -> sv.Design:
     return d
 
 
-def _uncov_floating_power() -> sv.Design:
-    d = good_baseline(); d.name = "uncov_floating_power"
+def _bad_floating_power() -> sv.Design:
+    d = good_baseline(); d.name = "bad_floating_power"
     # an active device on the bus that no rail powers — the gate has no
     # "every block must be on a rail" connectivity check, so it sails through.
     d.buses[0].nodes.append(sv.I2CNode("orphan", "peripheral", address=0x51))
@@ -140,8 +141,8 @@ CORPUS = [
     # bad, UNCOVERED (measured false negatives — the honest roadmap)
     {"build": _uncov_multimaster,  "kind": "bad_uncovered", "missing": "i2c-multimaster",
      "note": "two controllers on one bus — no multi-master check"},
-    {"build": _uncov_floating_power,"kind": "bad_uncovered", "missing": "power-connectivity",
-     "note": "active device on no rail — no 'every block powered' check"},
+    {"build": _bad_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
+     "note": "active device on no rail — power-connectivity must fire"},
 ]
 
 # Faults not even representable in today's model — listed so the roadmap is complete.

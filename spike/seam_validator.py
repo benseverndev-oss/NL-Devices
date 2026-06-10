@@ -201,13 +201,28 @@ def check_part_rail_rating(d: Design) -> list[str]:
     return errs
 
 
+def check_power_connectivity(d: Design) -> list[str]:
+    """Every block that participates on a bus must also draw from a power rail; an
+    active device on no rail has a floating supply. A structural false-negative the
+    other checks miss (they only reason about blocks already on a rail/bus)."""
+    powered = {block for r in d.rails for (block, _req_v, _tol) in r.sinks}
+    errs = []
+    for b in d.buses:
+        for n in b.nodes:
+            if n.block not in powered:
+                errs.append(f"POWER: block '{n.block}' on bus '{b.name}' draws from no "
+                            f"rail (supply floats)")
+    return errs
+
+
 CHECKS = [("power-domain", check_power_domains),
           ("i2c-pullups", check_i2c_pullups),
           ("i2c-address", check_i2c_addresses),
           ("current-budget", check_current_budget),
           ("i2c-reserved-addr", check_i2c_reserved_addresses),
           ("i2c-bus-timing", check_i2c_bus_capacitance),
-          ("part-rail-rating", check_part_rail_rating)]
+          ("part-rail-rating", check_part_rail_rating),
+          ("power-connectivity", check_power_connectivity)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:
