@@ -64,16 +64,21 @@ lands on its own.
   and I2C1 on PB6/PB7 with bus pull-ups. Its EEPROM block is named `EepromBlock`.
 - The STM32 part is **already fully committed** under
   `spike/atopile/elec/src/parts/STMicroelectronics_STM32F103C8T6/`: `.ato`, `.kicad_sym`,
-  `.kicad_mod`, and the `LQFP-48 …​.step` 3D model (alongside the other 11 models).
+  `.kicad_mod`, and the `LQFP-48 …​.step` 3D model (alongside the other committed part models).
 
 ### The change (Approach A — import from the shared lib)
 
 - **`spike/atopile/verified_slice.ato`:** remove the three local stub block
   definitions; add `from "verified_lib.ato" import PowerBlock, McuBlock, EepromBlock`;
   keep `App` composing `psu` (PowerBlock), `mcu` (McuBlock), `sensor` (EepromBlock) on
-  the 3V3 rail with the 400kHz I2C bus. The sole structural change to `App` is the
-  sensor block type rename `SensorBlock` → `EepromBlock`.
-- **No other source changes.** The part + footprint + `.step` are committed; `place()`
+  the 3V3 rail with the 400kHz I2C bus. Two `App` changes: (a) the sensor block type
+  rename `SensorBlock` → `EepromBlock`; (b) **strap the EEPROM address pins** — the
+  imported `EepromBlock` straps `WP` internally but (unlike the old stub `SensorBlock`)
+  leaves `A0`/`A1`/`A2` to the parent, so `App` must tie `sensor.eeprom.A0/A1/A2 ~
+  power3v3.lv` to hold address 0x50. Left unstrapped they float: harmless to the 0/0 DRC
+  gate, but wrong for a board meant to be real (the EEPROM wouldn't reliably answer at
+  0x50), and it would undercut the I2C address reasoning the validator assumes.
+- **No other files change.** The part + footprint + `.step` are committed; `place()`
   auto-grows the board outline for the additional footprints; the `route` job already
   targets `verified`.
 
