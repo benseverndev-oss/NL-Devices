@@ -64,6 +64,15 @@ def spi_baseline() -> sv.Design:
     )
 
 
+def _uncov_spi_mode_mismatch() -> sv.Design:
+    d = spi_baseline(); d.name = "uncov_spi_mode_mismatch"
+    d.rails[1].sinks.append(("flash_b", 3.3, 0.05))
+    # mode 3 peripheral vs the mode-0 controller — representable (SPINode.mode) but the
+    # gate has no spi-mode-compat check, so it sails through (a measured false negative).
+    d.spi_buses[0].nodes.append(sv.SPINode("flash_b", "peripheral", chip_select="cs1", mode=3))
+    return d
+
+
 def _bad_spi_floating_power() -> sv.Design:
     d = spi_baseline(); d.name = "bad_spi_floating_power"
     # an SPI peripheral on no rail — its supply floats
@@ -176,6 +185,8 @@ CORPUS = [
      "note": "SPI bus with no master"},
     {"build": _bad_spi_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
      "note": "SPI peripheral on no rail"},
+    {"build": _uncov_spi_mode_mismatch, "kind": "bad_uncovered", "missing": "spi-mode-compat",
+     "note": "SPI mode-3 peripheral vs mode-0 controller — no spi-mode-compat check yet"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},
