@@ -133,6 +133,26 @@ def add_outline(text: str, w_mm: float, h_mm: float) -> str:
     return cut[:-1] + rect + ")\n"
 
 
+def allow_mask_bridges(text: str) -> str:
+    """Flip the board's `(allow_soldermask_bridges_in_footprints …)` switch to `yes`.
+
+    A fine-pitch footprint (e.g. the LQFP-48's 0.5mm-pitch pads) has solder-mask webs
+    between adjacent in-footprint pads narrower than KiCad's default minimum, which DRC
+    reports as `solder_mask_bridge` "aperture bridges items with different nets". That is
+    a fab-capability question (JLCPCB et al. handle 0.5mm pitch), not a design defect —
+    and KiCad exposes this very per-board switch to say so. We only relax bridges WITHIN
+    footprints (vendor-generated pad geometry); copper/route clearances are untouched, so
+    the routing DRC still has teeth."""
+    if "(allow_soldermask_bridges_in_footprints no)" in text:
+        return text.replace("(allow_soldermask_bridges_in_footprints no)",
+                            "(allow_soldermask_bridges_in_footprints yes)", 1)
+    if "(allow_soldermask_bridges_in_footprints yes)" in text:
+        return text                                  # already permitted
+    # token absent (edge boards): inject into the (setup …) block
+    return re.sub(r"\(setup\b",
+                  "(setup\n\t\t(allow_soldermask_bridges_in_footprints yes)", text, count=1)
+
+
 def _courtyards_overlap(fps) -> list[tuple[str, str]]:
     bad = []
     for i, a in enumerate(fps):
@@ -165,6 +185,10 @@ def selftest() -> bool:
     outline_ok = ("(gr_rect" in outlined and '(layer "Edge.Cuts")' in outlined
                   and outlined.count("(footprint") == text.count("(footprint"))
     print(f"  [{'ok' if outline_ok else 'FAIL'}] Edge.Cuts outline added, footprints intact"); ok &= outline_ok
+    bridged = allow_mask_bridges(text)
+    mask_ok = ("(allow_soldermask_bridges_in_footprints yes)" in bridged
+               and "(allow_soldermask_bridges_in_footprints no)" not in bridged)
+    print(f"  [{'ok' if mask_ok else 'FAIL'}] soldermask bridges allowed in footprints (fine-pitch)"); ok &= mask_ok
     print("-" * 60); print("SELFTEST:", "PASS" if ok else "FAIL")
     return ok
 

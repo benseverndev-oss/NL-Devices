@@ -112,11 +112,20 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
-      # NOTE: routing verified_mcu (the 48-pin STM32 board) is deferred — see GAPS §4e.
-      # An autoroute attempt (run #48) surfaced two real blockers on that board:
-      #   • freerouting places 0 vias, so it can't complete a dense 2-layer route
-      #     (13/42 nets left unrouted) — needs via-padstack support in the Specctra
-      #     DSN export (spike/scripts/kicad_specctra.py).
-      #   • the LQFP-48 0.5mm-pitch pads trip 29 `solder_mask_bridge` DRC errors — a
-      #     fine-pitch mask-policy question, not a routing one.
-      # The board is gated on BUILD (above); routing it is the next, separate task.
+      - name: Route verified_mcu (real STM32 board → routed copper)
+        # Same HARD GATE on the fuller MCU+LDO+EEPROM board (48-pin LQFP). place.py now
+        # relaxes in-footprint soldermask bridges (fine-pitch); via-completion is the
+        # remaining question the diagnostic below answers.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/verified_mcu/verified_mcu.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route_mcu
+      - name: Diagnose verified_mcu DSN/SES (via definitions)
+        if: always()
+        run: |
+          echo "=== DSN: structure / rules / via / padstack ==="
+          grep -nE '\(via|padstack|\(rule|\(structure|\(boundary|\(layer ' spike/build/route_mcu/board.dsn | head -120 || true
+          echo "=== SES: via usage ==="
+          grep -cE '\(via ' spike/build/route_mcu/board.ses || true

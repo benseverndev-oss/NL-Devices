@@ -126,7 +126,8 @@ def pipeline(board: str, jar: str, specctra: str, workdir: str) -> int:
     text = Path(board).read_text(encoding="utf-8")
     fps = place.parse_footprints(text)
     w, h = place.place(fps)
-    placed_txt = place.add_outline(place.write_positions(text, fps), w, h)
+    placed_txt = place.add_outline(
+        place.allow_mask_bridges(place.write_positions(text, fps)), w, h)
     placed = work / "placed.kicad_pcb"
     placed.write_text(placed_txt, encoding="utf-8")
     print(f"placed {len(fps)} footprints, board {w:.1f}x{h:.1f}mm -> {placed}")
