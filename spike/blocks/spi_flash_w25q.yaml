@@ -1,6 +1,9 @@
 id: spi_flash_w25q
 version: 0.1.0
 function: "SPI NOR flash (W25Q128JVSIQ / C97521, SOIC-8) — the routed-board SPI peripheral"
+# No `atopile_module:` on purpose — the SPI board is hand-authored in spi_slice.ato;
+# codegen.py is I2C-only and can't emit an SPI App, so binding one would imply support
+# that doesn't exist.
 tags: [memory, flash, spi]
 bound_part:
   lcsc: C97521
