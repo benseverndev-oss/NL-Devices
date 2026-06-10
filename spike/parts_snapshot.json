@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "source": "easyeda+lcsc",
   "generated_by": "partdb.py ingest",
-  "generated_at": "2026-06-09",
+  "generated_at": "2026-06-10",
   "note": "Ground-truth part data. Regenerate with `python3 partdb.py ingest --from-blocks`. verify_parts.py checks blocks against this offline.",
   "parts": {
     "C477979": {
@@ -273,6 +273,81 @@
         ]
       ],
       "fetched_at": "2026-06-09",
+      "sources": [
+        "easyeda:components",
+        "lcsc:__NEXT_DATA__"
+      ]
+    },
+    "C97521": {
+      "lcsc": "C97521",
+      "mpn": "W25Q128JVSIQ",
+      "manufacturer": "Winbond",
+      "package": "SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL",
+      "jlcpcb_class": "Basic Part",
+      "stock": 9950,
+      "lcsc_url": "https://www.lcsc.com/product-detail/C97521.html",
+      "easyeda_uuid": "dc7e982d084b4ca28d73f2e365d5a8e8",
+      "attributes": {
+        "operating_voltage_v": {
+          "min": 2.7,
+          "max": 3.6,
+          "raw": "2.7V~3.6V"
+        },
+        "standby_current_ma": {
+          "value_ma": 0.001,
+          "raw": "1uA"
+        },
+        "interface": [
+          "SPI"
+        ]
+      },
+      "raw_attributes": [
+        [
+          "工作电压",
+          "2.7V~3.6V"
+        ],
+        [
+          "存储容量",
+          "128Mbit"
+        ],
+        [
+          "工作温度",
+          "-40℃~+85℃"
+        ],
+        [
+          "擦写寿命",
+          "100,000 cycles"
+        ],
+        [
+          "时钟频率(fc)",
+          "133MHz"
+        ],
+        [
+          "功能特性",
+          "Write enable latch;Power-on reset;Hardware write protection;Software write protection;Absolute write protection"
+        ],
+        [
+          "数据保留 - TDR(年)",
+          "20 Years"
+        ],
+        [
+          "块擦除时间(tBE)",
+          "120ms@(32KB)"
+        ],
+        [
+          "页写入时间(Tpp)",
+          "3ms"
+        ],
+        [
+          "待机电流",
+          "1uA"
+        ],
+        [
+          "接口类型",
+          "SPI"
+        ]
+      ],
+      "fetched_at": "2026-06-10",
       "sources": [
         "easyeda:components",
         "lcsc:__NEXT_DATA__"

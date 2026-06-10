@@ -1,6 +1,8 @@
 id: mcu_spi_controller
 version: 0.1.0
 function: "SPI controller (abstract; the STM32 binds it in the routed board)"
+# No `atopile_module:` on purpose — the SPI board is hand-authored in spi_slice.ato;
+# codegen.py is I2C-only and can't emit an SPI App.
 tags: [controller, mcu, spi]
 ports:
   power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05, current_ma: 50}

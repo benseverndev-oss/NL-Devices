@@ -103,3 +103,22 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
+      - name: ato build spi_node (STM32 SPI controller + W25Q128 flash)
+        # Second routed board = spi_slice.ato:App (same AMS1117 LDO C6186 + STM32F103C8T6
+        # C8734 brain, but driving a real W25Q128 SPI NOR flash C97521 over SPI1). The
+        # W25Q128 3D model is committed under elec/src/parts/Winbond_Elec_W25Q128JVSIQ/**,
+        # so this build is reproducible (only the LCSC part-pick hits the network).
+        working-directory: spike/atopile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ato build -b spi_node
+          echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Route the SPI board (place → DSN → freerouting → SES → DRC → Gerbers)
+        # HARD GATE (independent of the verified board): 0 unrouted + 0 DRC + all copper
+        # layers. Separate --work dir so artifacts don't clobber the verified route.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/spi_node/spi_node.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route_spi

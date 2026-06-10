@@ -1,0 +1,32 @@
+# The `spi_node` build target's top App. Composes the THREE real SPI blocks
+# (LDO + STM32 SPI-controller MCU + W25Q128 flash) from the shared library
+# `verified_lib.ato`. Mirrors verified_slice.ato (the I2C board) but on an SPI
+# bus: a single controller + a single peripheral, wired controller→flash plus a
+# dedicated chip-select. Hand-written (NOT via the orchestrator), same as the
+# verified slice.
+
+import ElectricPower
+import SPI
+
+from "verified_lib.ato" import PowerBlock, McuSpiBlock, SpiFlashBlock
+
+module App:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+
+    psu = new PowerBlock
+    mcu = new McuSpiBlock
+    flash = new SpiFlashBlock
+
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power3v3
+    flash.power ~ power3v3
+
+    # SPI bus: controller (STM32 SPI1) → flash (W25Q128). SCK/MOSI/MISO on the
+    # typed bus, plus the dedicated chip-select line controller→peripheral.
+    spi_bus = new SPI
+    mcu.spi ~ spi_bus
+    flash.spi ~ spi_bus
+    mcu.cs ~ flash.cs

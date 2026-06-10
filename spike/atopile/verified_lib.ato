@@ -5,12 +5,14 @@
 
 import ElectricPower
 import I2C
+import SPI
 import Capacitor
 import Resistor
 from "parts/Advanced_Monolithic_Systems_AMS1117_3_3/Advanced_Monolithic_Systems_AMS1117_3_3.ato" import Advanced_Monolithic_Systems_AMS1117_3_3_package
 from "parts/Microchip_Tech_AT24C256C_SSHL_T/Microchip_Tech_AT24C256C_SSHL_T.ato" import Microchip_Tech_AT24C256C_SSHL_T_package
 from "parts/Texas_Instruments_LM75AIMX_NOPB/Texas_Instruments_LM75AIMX_NOPB.ato" import Texas_Instruments_LM75AIMX_NOPB_package
 from "parts/STMicroelectronics_STM32F103C8T6/STMicroelectronics_STM32F103C8T6.ato" import STMicroelectronics_STM32F103C8T6_package
+from "parts/Winbond_Elec_W25Q128JVSIQ/Winbond_Elec_W25Q128JVSIQ.ato" import Winbond_Elec_W25Q128JVSIQ_package
 
 # --- power_3v3_ldo : 5V -> 3V3 (AMS1117-3.3, C6186) --------------------------
 module PowerBlock:
@@ -131,4 +133,102 @@ module TempBlock:
     lm75.GND ~ power.lv
     lm75.SCL ~ i2c.scl.line
     lm75.SDA ~ i2c.sda.line
+    assert power.voltage within 3.3V +/- 5%
+
+# --- mcu_spi_controller : STM32F103C8T6 ARM Cortex-M3, SPI controller (C8734) -
+# Same real STM32 + power/decoupling/reset/BOOT0 wiring as McuBlock, but exposes
+# SPI1 instead of I2C. SPI1 on PA5=SCK / PA6=MISO / PA7=MOSI; chip-select on PA4
+# (SPI1 hardware NSS) brought out as a `signal cs`. Runs on the internal 8 MHz RC
+# (no crystal), programmed via SWD (PA13/PA14, left for a board header).
+module McuSpiBlock:
+    power = new ElectricPower      # 3V3 rail in
+    spi = new SPI                  # SPI1 controller (PA5=SCK, PA6=MISO, PA7=MOSI)
+    signal cs                      # chip-select (PA4 / SPI1 NSS)
+    mcu = new STMicroelectronics_STM32F103C8T6_package
+
+    # power: every VDD/VBAT/VDDA to 3V3, every VSS/VSSA to GND
+    mcu.VDD_1 ~ power.hv
+    mcu.VDD_2 ~ power.hv
+    mcu.VDD_3 ~ power.hv
+    mcu.VBAT ~ power.hv            # no coin cell — tie to the main rail
+    mcu.VDDA ~ power.hv            # analog supply
+    mcu.VSS_1 ~ power.lv
+    mcu.VSS_2 ~ power.lv
+    mcu.VSS_3 ~ power.lv
+    mcu.VSSA ~ power.lv
+
+    # decoupling: 100nF per VDD pin + 4.7uF bulk + 1uF on VDDA
+    dec1 = new Capacitor
+    dec2 = new Capacitor
+    dec3 = new Capacitor
+    bulk = new Capacitor
+    deca = new Capacitor
+    dec1.capacitance = 100nF +/- 20%
+    dec2.capacitance = 100nF +/- 20%
+    dec3.capacitance = 100nF +/- 20%
+    bulk.capacitance = 4.7uF +/- 20%
+    deca.capacitance = 1uF +/- 20%
+    dec1.unnamed[0] ~ power.hv
+    dec1.unnamed[1] ~ power.lv
+    dec2.unnamed[0] ~ power.hv
+    dec2.unnamed[1] ~ power.lv
+    dec3.unnamed[0] ~ power.hv
+    dec3.unnamed[1] ~ power.lv
+    bulk.unnamed[0] ~ power.hv
+    bulk.unnamed[1] ~ power.lv
+    deca.unnamed[0] ~ power.hv
+    deca.unnamed[1] ~ power.lv
+
+    # reset: NRST pull-up + 100nF to GND (standard RC)
+    nrst_pullup = new Resistor
+    nrst_cap = new Capacitor
+    nrst_pullup.resistance = 10kohm +/- 5%
+    nrst_cap.capacitance = 100nF +/- 20%
+    nrst_pullup.unnamed[0] ~ mcu.NRST
+    nrst_pullup.unnamed[1] ~ power.hv
+    nrst_cap.unnamed[0] ~ mcu.NRST
+    nrst_cap.unnamed[1] ~ power.lv
+
+    # BOOT0 -> GND via 10k: boot from main flash
+    boot0_pulldown = new Resistor
+    boot0_pulldown.resistance = 10kohm +/- 5%
+    boot0_pulldown.unnamed[0] ~ mcu.BOOT0
+    boot0_pulldown.unnamed[1] ~ power.lv
+
+    # SPI1 onto the typed bus; reference the 3V3 rail like the I2C block does.
+    spi.sclk.reference ~ power
+    spi.miso.reference ~ power
+    spi.mosi.reference ~ power
+    mcu.PA5 ~ spi.sclk.line        # SPI1_SCK
+    mcu.PA6 ~ spi.miso.line        # SPI1_MISO
+    mcu.PA7 ~ spi.mosi.line        # SPI1_MOSI
+    mcu.PA4 ~ cs                   # SPI1 NSS / chip-select
+
+    assert power.voltage within 3.3V +/- 5%
+
+# --- spi_flash_w25q : SPI NOR flash (W25Q128JVSIQ, C97521, SOIC-8) ------------
+# Single-SPI (standard) mode, write-protect + hold disabled: IO2 (=WP#, pin 3)
+# and IO3 (=HOLD#, pin 7) are tied to VCC so they never assert. CLK/DI/DO map to
+# the controller's SCK/MOSI/MISO; nCS is the dedicated chip-select. 100nF decap.
+module SpiFlashBlock:
+    power = new ElectricPower
+    spi = new SPI
+    signal cs                      # chip-select in (driven by the controller)
+    flash = new Winbond_Elec_W25Q128JVSIQ_package
+
+    flash.VCC ~ power.hv
+    flash.GND ~ power.lv
+    flash.CLK ~ spi.sclk.line      # serial clock  (controller SCK)
+    flash.DI ~ spi.mosi.line       # data in       (controller MOSI)
+    flash.DO ~ spi.miso.line       # data out      (controller MISO)
+    flash.nCS ~ cs                 # chip-select
+    flash.IO2 ~ power.hv           # WP#  held high — write protection off
+    flash.IO3 ~ power.hv           # HOLD# held high — hold off (single-SPI)
+
+    # local decoupling: 100nF VCC->GND
+    dec = new Capacitor
+    dec.capacitance = 100nF +/- 20%
+    dec.unnamed[0] ~ power.hv
+    dec.unnamed[1] ~ power.lv
+
     assert power.voltage within 3.3V +/- 5%
