@@ -97,9 +97,9 @@ def diff(got: dict, want: dict) -> list[str]:
     for p in sorted((cw - cg).elements()):
         out.append(f"  - part {p}")
     ng, nw = Counter(map(tuple, got["nets"])), Counter(map(tuple, want["nets"]))
-    for n in (ng - nw).elements():
+    for n in sorted((ng - nw).elements()):
         out.append(f"  + net {list(n)}")
-    for n in (nw - ng).elements():
+    for n in sorted((nw - ng).elements()):
         out.append(f"  - net {list(n)}")
     return out
 
