@@ -30,6 +30,7 @@ class FP:
     at_span: tuple[int, int]   # span of the existing (at ...) to replace
     body_mm: tuple[float, float]
     owner: str | None = None   # net-derived owner for decoupling caps (best-effort)
+    block: str = ""            # atopile block instance (e.g. "mcu") — for cluster placement
     x: float = 0.0
     y: float = 0.0
     rot: int = 0
@@ -38,6 +39,10 @@ class FP:
 # Matches: (property "Reference" "U1" ...) or (fp_text reference U1 ...)
 # The fixture uses `(property "Reference" "C1"` style (atopile 0.12.5 / KiCad 9).
 _REF_RE = re.compile(r'\(property "Reference" "([^"]+)"|\(fp_text reference (\S+)')
+
+# atopile stamps each footprint with its block-qualified instance path, e.g.
+# `(property "atopile_address" "mcu.cap")` — the leading token is the block instance.
+_ADDR_RE = re.compile(r'\(property "atopile_address" "([^"]+)"')
 
 # Matches the footprint-level (at x y [rot]) — the first (at ...) in each block.
 _AT_RE = re.compile(r"\(at [^)]*\)")
@@ -76,13 +81,30 @@ def parse_footprints(text: str) -> list[FP]:
         at_span = (s + mat.start(), s + mat.end()) if mat else (s, s)
         mlw = _LW_RE.search(block)
         body = (float(mlw.group(1)), float(mlw.group(2))) if mlw else (5.0, 5.0)
-        fps.append(FP(ref=ref, start=s, end=e, at_span=at_span, body_mm=body))
+        maddr = _ADDR_RE.search(block)
+        inst = maddr.group(1) if maddr else ""
+        blk = inst.split(".")[0] if inst else ""
+        fps.append(FP(ref=ref, start=s, end=e, at_span=at_span, body_mm=body, block=blk))
     return fps
 
 
+def _cluster_order(fps: list[FP]) -> list[FP]:
+    """Order footprints so each atopile block's parts are contiguous, biggest-block
+    first and the block's anchor (its IC — the largest body) leading. Filling the grid
+    in this order drops each block's decoupling caps / pull-ups into cells adjacent to
+    their IC, so intra-block nets (power, decoupling, bus pull-ups) stay short — the
+    routability win the flat by-size grid threw away. Deterministic: ties break on the
+    block name then the refdes."""
+    block_anchor = {}                       # block -> its largest body (the IC)
+    for p in fps:
+        block_anchor[p.block] = max(block_anchor.get(p.block, 0.0), max(p.body_mm))
+    return sorted(fps, key=lambda p: (-block_anchor[p.block], p.block,
+                                      -max(p.body_mm), p.ref))
+
+
 def place(fps: list[FP]) -> tuple[float, float]:
-    """Grid-place footprints by descending body size; return board WxH."""
-    order = sorted(fps, key=lambda p: -max(p.body_mm))
+    """Grid-place footprints, clustered by atopile block; return board WxH."""
+    order = _cluster_order(fps)
     pitch = max((max(p.body_mm) for p in fps), default=5.0) + SPACING_MM
     cols = max(1, math.ceil(math.sqrt(len(fps))))
     for idx, p in enumerate(order):
@@ -171,6 +193,13 @@ def selftest() -> bool:
     print("place self-test\n" + "-" * 60)
     n_ok = len(fps) >= 4 and all(p.ref != "?" for p in fps)
     print(f"  [{'ok' if n_ok else 'FAIL'}] parsed {len(fps)} footprints, all have refs"); ok &= n_ok
+    blk_ok = all(p.block for p in fps)
+    print(f"  [{'ok' if blk_ok else 'FAIL'}] every footprint resolved its atopile block "
+          f"({sorted({p.block for p in fps})})"); ok &= blk_ok
+    seq = [p.block for p in _cluster_order(fps)]
+    contiguous = sum(1 for a, b in zip(seq, seq[1:]) if a != b) == len(set(seq)) - 1
+    print(f"  [{'ok' if contiguous else 'FAIL'}] cluster order keeps each block contiguous "
+          f"({'>'.join(seq)})"); ok &= contiguous
     w, h = place(fps)
     overlap = _courtyards_overlap(fps)
     print(f"  [{'ok' if not overlap else 'FAIL'}] no courtyard overlap (board {w:.1f}x{h:.1f}mm)"); ok &= not overlap

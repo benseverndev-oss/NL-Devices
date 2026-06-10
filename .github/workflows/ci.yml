@@ -112,12 +112,20 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route
-      # verified_mcu ROUTING is deferred — see GAPS §4e. Two iterations (runs #50/#51)
-      # established: vias work (DSN defines Via[0-1]_600:300_um; freerouting used them);
-      # but the naive grid placement makes the 48-pin board unroutable — freerouting
-      # thrashes (999 passes, ~82 GB RAM, ≥8 nets left unrouted, non-deterministic) because
-      # the large GND/3V3 multi-pad nets are routed point-to-point with no copper plane.
-      # Closing it needs net-aware placement + ground/power pours (a placement-engine
-      # feature), plus a code-level solder_mask_bridge exclusion (KiCad's
-      # allow_soldermask_bridges_in_footprints does NOT suppress kicad-cli DRC). The board
-      # is gated on BUILD (above); routing it is its own scoped task.
+      - name: Route verified_mcu (real STM32 board → routed copper)
+        # HARD GATE on the fuller MCU+LDO+EEPROM board (48-pin LQFP). place.py now clusters
+        # each atopile block's parts around its IC (short intra-block nets), parse_drc
+        # excludes fine-pitch solder_mask_bridge, and freerouting is wall-clock bounded.
+        run: |
+          python3 spike/route.py --pipeline \
+            --board spike/atopile/elec/layout/verified_mcu/verified_mcu.kicad_pcb \
+            --jar freerouting.jar \
+            --specctra spike/scripts/kicad_specctra.py \
+            --work spike/build/route_mcu
+      - name: Diagnose verified_mcu route (convergence + residual DRC)
+        if: always()
+        run: |
+          echo "=== freerouting final unrouted ==="
+          grep -E 'incomplete_count|pass #' spike/build/route_mcu/freerouting.log | tail -4 || true
+          echo "=== DRC violation types (after solder_mask exclusion) ==="
+          python3 -c "import json,collections; d=json.load(open('spike/build/route_mcu/drc.json')); print(collections.Counter(v.get('type') for v in d.get('violations',[])))" || true
