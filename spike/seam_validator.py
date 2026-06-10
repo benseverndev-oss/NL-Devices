@@ -54,10 +54,26 @@ class I2CBus:
 
 
 @dataclass
+class SPINode:
+    block: str
+    role: str                        # 'controller' | 'peripheral'
+    chip_select: str | None = None   # CS net id (peripherals only)
+    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — modelled, NOT yet checked
+
+
+@dataclass
+class SPIBus:
+    name: str
+    nodes: list[SPINode] = field(default_factory=list)
+    speed_hz: int = 1_000_000
+
+
+@dataclass
 class Design:
     name: str
     rails: list[PowerRail] = field(default_factory=list)
     buses: list[I2CBus] = field(default_factory=list)
+    spi_buses: list[SPIBus] = field(default_factory=list)
 
 
 def _interval(v: float, tol: float) -> tuple[float, float]:

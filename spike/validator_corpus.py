@@ -49,6 +49,21 @@ def good_baseline() -> sv.Design:
     return d
 
 
+def spi_baseline() -> sv.Design:
+    """A clean SPI design: an MCU controller + one flash peripheral on its own CS."""
+    return sv.Design(
+        "good_spi_node",
+        rails=[
+            sv.PowerRail("5V", 5.0, 0.05, sinks=[("psu", 5.0, 0.20)]),
+            sv.PowerRail("3V3", 3.3, 0.05, sinks=[("mcu", 3.3, 0.05), ("flash", 3.3, 0.05)]),
+        ],
+        spi_buses=[sv.SPIBus("spi_bus", nodes=[
+            sv.SPINode("mcu", "controller", mode=0),
+            sv.SPINode("flash", "peripheral", chip_select="cs0", mode=0),
+        ])],
+    )
+
+
 def _peripheral(b: sv.I2CBus, name: str) -> sv.I2CNode:
     return next(n for n in b.nodes if n.block == name)
 
@@ -133,6 +148,7 @@ CORPUS = [
     # good
     {"build": good_baseline,    "kind": "good", "expect": set(), "note": "nominal sensor node"},
     {"build": _good_fast_bus,   "kind": "good", "expect": set(), "note": "400kHz, stiff pull-up — timing OK"},
+    {"build": spi_baseline, "kind": "good", "expect": set(), "note": "SPI: MCU + flash, distinct CS"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},
