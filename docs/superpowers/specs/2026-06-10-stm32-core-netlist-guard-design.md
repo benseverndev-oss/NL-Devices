@@ -61,7 +61,8 @@ connectivity form**:
 
 - For each footprint block, read its footprint library id (the `(footprint "lib:name"`
   token), its `(property "Value" "...")`, its `(property "Reference" "...")`, and each
-  `(pad "<name>" … (net <id> "<netname>"))`.
+  `(pad "<name>" … (net <id> "<netname>"))`. (Some parts — the STM32, the EEPROM — emit an
+  empty `Value`; identity then rests on the footprint libid + pad, which is sufficient.)
 - Build nets: map each net id → the multiset of `(footprint_libid, value, pad_name)` of
   the pads on it. **Net 0 (`""`, the unconnected pads) is included** — an intentionally
   floating pin (e.g. SWD PA13/PA14, spare GPIO) must stay floating after the refactor.
@@ -84,14 +85,21 @@ are caught.
 - `--selftest` → offline: parse the committed fixture
   (`spike/fixtures/verified/verified.kicad_pcb`), emit, re-parse the emitted form, assert
   determinism (emit is stable across two runs) + basic sanity (≥1 net, every pad
-  resolves to a declared net). Run in the `spike` CI job, no toolchain needed.
+  resolves to a declared net). Run in the `spike` CI job, no toolchain needed. (That
+  fixture is the small placement board, **not** an STM32 board — `--selftest` only checks
+  parser invariants; the STM32-specific equivalence proof is the route-job `--check`
+  against the CI-built goldens.)
 
 ### Golden capture (CI, committed)
 
-A one-shot CI step (mirror the part-create `[skip ci]` commit-back pattern): build
-`verified` + `spi_node`, run `netlist.py --emit` on each, and commit
-`spike/fixtures/golden/verified.netlist.json` + `spi_node.netlist.json`. These are the
-frozen "intended connectivity" of each board *as it is today* (pre-refactor).
+A **one-shot CI job added on the branch and removed after** (the sandbox can't download
+CI artifacts or run `ato build`, so CI must produce *and commit* the golden — the same
+CI-commit-back technique used earlier to land the committed part files): a job with
+`permissions: contents: write` that builds `verified` + `spi_node`, runs `netlist.py
+--emit` on each board's `.kicad_pcb`, writes the two `spike/fixtures/golden/*.netlist.json`
+files, commits them back with a `[skip ci]` commit, and pushes. Then `git pull` locally,
+delete the one-shot job, and proceed. These JSONs are the frozen "intended connectivity"
+of each board *as it is today* (pre-refactor).
 
 ### Route-job integration
 
