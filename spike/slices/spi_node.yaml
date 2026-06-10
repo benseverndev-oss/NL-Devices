@@ -1,0 +1,16 @@
+name: spi_node
+instances:
+  psu: power_3v3_ldo
+  mcu: mcu_spi_controller
+  flash: spi_flash_w25q
+rails:
+  - name: "5V"
+    source: {voltage: 5.0, tolerance: 0.05}
+    sinks: [psu.power_in]
+  - name: "3V3"
+    source_from: psu.power_out
+    sinks: [mcu.power, flash.power]
+buses:
+  - name: spi_bus
+    type: spi
+    members: [mcu.spi, flash.spi]

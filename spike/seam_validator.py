@@ -7,10 +7,9 @@ seam-validation layer is something we own. This module shows it is small,
 deterministic, and substrate-independent: it runs over a typed block-graph (our
 "verified block" contract from SPIKE.md §3), not over any one EDA tool's internals.
 
-It checks the three SPIKE.md §4 seams:
-  1. power-domain compatibility   (the rail's voltage must lie within each sink's range)
-  2. I2C pull-ups present          (some participant must pull SCL/SDA up)
-  3. I2C address uniqueness        (no two peripherals share an address)
+It checks the SPIKE.md §4 seams — now 11 checks across power, I2C, and SPI topology
+(see the `CHECKS` registry). The original three: power-domain compatibility, I2C
+pull-ups present, I2C address uniqueness.
 
 Run:  python3 seam_validator.py
 """
@@ -54,17 +53,33 @@ class I2CBus:
 
 
 @dataclass
+class SPINode:
+    block: str
+    role: str                        # 'controller' | 'peripheral'
+    chip_select: str | None = None   # CS net id (peripherals only)
+    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — modelled, NOT yet checked
+
+
+@dataclass
+class SPIBus:
+    name: str
+    nodes: list[SPINode] = field(default_factory=list)
+    speed_hz: int = 1_000_000   # modelled, not yet checked (no SPI timing check yet)
+
+
+@dataclass
 class Design:
     name: str
     rails: list[PowerRail] = field(default_factory=list)
     buses: list[I2CBus] = field(default_factory=list)
+    spi_buses: list[SPIBus] = field(default_factory=list)
 
 
 def _interval(v: float, tol: float) -> tuple[float, float]:
     return (v * (1 - tol), v * (1 + tol))
 
 
-# ---- the three seam checks ---------------------------------------------------
+# ---- the original three seam checks ------------------------------------------
 def check_power_domains(d: Design) -> list[str]:
     errs = []
     for r in d.rails:
@@ -201,6 +216,37 @@ def check_part_rail_rating(d: Design) -> list[str]:
     return errs
 
 
+def check_spi_single_controller(d: Design) -> list[str]:
+    """Each SPI bus needs exactly one controller (master): zero = no master drives it,
+    two = clock/CS contention."""
+    errs = []
+    for b in d.spi_buses:
+        controllers = [n.block for n in b.nodes if n.role == 'controller']
+        if len(controllers) != 1:
+            errs.append(f"SPI: bus '{b.name}' has {len(controllers)} controllers "
+                        f"({', '.join(controllers) or 'none'}); need exactly one")
+    return errs
+
+
+def check_spi_chip_select_unique(d: Design) -> list[str]:
+    """Every SPI peripheral needs its own chip-select; two sharing a CS line would both
+    respond at once. A peripheral with no CS is also flagged."""
+    errs = []
+    for b in d.spi_buses:
+        seen: dict[str, str] = {}
+        for n in b.nodes:
+            if n.role != 'peripheral':
+                continue
+            if n.chip_select is None:
+                errs.append(f"SPI: bus '{b.name}' peripheral '{n.block}' has no chip-select")
+            elif n.chip_select in seen:
+                errs.append(f"SPI: bus '{b.name}' chip-select '{n.chip_select}' shared by "
+                            f"'{seen[n.chip_select]}' and '{n.block}'")
+            else:
+                seen[n.chip_select] = n.block
+    return errs
+
+
 def check_i2c_multimaster(d: Design) -> list[str]:
     """At most one controller (bus master) per I2C bus. Two masters sharing SCL/SDA is
     an arbitration / clock-ownership hazard the single-controller topology here does
@@ -215,15 +261,19 @@ def check_i2c_multimaster(d: Design) -> list[str]:
 
 
 def check_power_connectivity(d: Design) -> list[str]:
-    """Every block that participates on a bus must also draw from a power rail; an
-    active device on no rail has a floating supply. A structural false-negative the
-    other checks miss (they only reason about blocks already on a rail/bus)."""
+    """Every block that participates on a bus (I2C or SPI) must also draw from a power
+    rail; an active device on no rail has a floating supply."""
     powered = {block for r in d.rails for (block, _req_v, _tol) in r.sinks}
     errs = []
     for b in d.buses:
         for n in b.nodes:
             if n.block not in powered:
                 errs.append(f"POWER: block '{n.block}' on bus '{b.name}' draws from no "
+                            f"rail (supply floats)")
+    for b in d.spi_buses:
+        for n in b.nodes:
+            if n.block not in powered:
+                errs.append(f"POWER: block '{n.block}' on SPI bus '{b.name}' draws from no "
                             f"rail (supply floats)")
     return errs
 
@@ -236,7 +286,9 @@ CHECKS = [("power-domain", check_power_domains),
           ("i2c-bus-timing", check_i2c_bus_capacitance),
           ("part-rail-rating", check_part_rail_rating),
           ("power-connectivity", check_power_connectivity),
-          ("i2c-multimaster", check_i2c_multimaster)]
+          ("i2c-multimaster", check_i2c_multimaster),
+          ("spi-chip-select-unique", check_spi_chip_select_unique),
+          ("spi-single-controller", check_spi_single_controller)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:

@@ -1,0 +1,7 @@
+id: mcu_spi_controller
+version: 0.1.0
+function: "SPI controller (abstract; the STM32 binds it in the routed board)"
+tags: [controller, mcu, spi]
+ports:
+  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05, current_ma: 50}
+  spi: {type: spi, role: controller, mode: 0}

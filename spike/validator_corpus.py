@@ -16,10 +16,10 @@ This harness answers that with a number. It runs a labelled corpus through
 
 The `bad_uncovered` set keeps the reported false-negative rate honest: faults *outside*
 the ones the validator was built around, that we expect to slip through. CI gates on
-regressions (good FP / covered miss); the FN inventory is published, not hidden. As of
-the power-connectivity + i2c-multimaster checks that set is empty (measured FN rate
-0/9), but the category is retained: the next representable fault we find lives here
-until its check exists.
+regressions (good FP / covered miss); the FN inventory is published, not hidden.
+Broadening the gate to SPI surfaced one representable fault it still misses —
+`spi-mode-compat` (measured FN rate 1/13) — which now lives in this set until its check
+is built. That is the next check to add.
 
 Run:  python3 validator_corpus.py
 """
@@ -46,6 +46,50 @@ def good_baseline() -> sv.Design:
         ], pullup_ohms=4700, speed_hz=100_000)],
     )
     sv.assign_addresses(d)
+    return d
+
+
+def spi_baseline() -> sv.Design:
+    """A clean SPI design: an MCU controller + one flash peripheral on its own CS."""
+    return sv.Design(
+        "good_spi_node",
+        rails=[
+            sv.PowerRail("5V", 5.0, 0.05, sinks=[("psu", 5.0, 0.20)]),
+            sv.PowerRail("3V3", 3.3, 0.05, sinks=[("mcu", 3.3, 0.05), ("flash", 3.3, 0.05)]),
+        ],
+        spi_buses=[sv.SPIBus("spi_bus", nodes=[
+            sv.SPINode("mcu", "controller", mode=0),
+            sv.SPINode("flash", "peripheral", chip_select="cs0", mode=0),
+        ])],
+    )
+
+
+def _uncov_spi_mode_mismatch() -> sv.Design:
+    d = spi_baseline(); d.name = "uncov_spi_mode_mismatch"
+    d.rails[1].sinks.append(("flash_b", 3.3, 0.05))
+    # mode 3 peripheral vs the mode-0 controller — representable (SPINode.mode) but the
+    # gate has no spi-mode-compat check, so it sails through (a measured false negative).
+    d.spi_buses[0].nodes.append(sv.SPINode("flash_b", "peripheral", chip_select="cs1", mode=3))
+    return d
+
+
+def _bad_spi_floating_power() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_floating_power"
+    # an SPI peripheral on no rail — its supply floats
+    d.spi_buses[0].nodes.append(sv.SPINode("orphan", "peripheral", chip_select="cs1", mode=0))
+    return d
+
+
+def _bad_spi_no_controller() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_no_controller"
+    d.spi_buses[0].nodes = [n for n in d.spi_buses[0].nodes if n.role != "controller"]
+    return d
+
+
+def _bad_spi_cs_collision() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_cs_collision"
+    d.rails[1].sinks.append(("flash_b", 3.3, 0.05))   # power it: single-fault
+    d.spi_buses[0].nodes.append(sv.SPINode("flash_b", "peripheral", chip_select="cs0", mode=0))
     return d
 
 
@@ -133,6 +177,16 @@ CORPUS = [
     # good
     {"build": good_baseline,    "kind": "good", "expect": set(), "note": "nominal sensor node"},
     {"build": _good_fast_bus,   "kind": "good", "expect": set(), "note": "400kHz, stiff pull-up — timing OK"},
+    {"build": spi_baseline, "kind": "good", "expect": set(), "note": "SPI: MCU + flash, distinct CS"},
+    # bad SPI, covered
+    {"build": _bad_spi_cs_collision, "kind": "bad_covered", "expect": {"spi-chip-select-unique"},
+     "note": "two SPI peripherals share CS cs0"},
+    {"build": _bad_spi_no_controller, "kind": "bad_covered", "expect": {"spi-single-controller"},
+     "note": "SPI bus with no master"},
+    {"build": _bad_spi_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
+     "note": "SPI peripheral on no rail"},
+    {"build": _uncov_spi_mode_mismatch, "kind": "bad_uncovered", "missing": "spi-mode-compat",
+     "note": "SPI mode-3 peripheral vs mode-0 controller — no spi-mode-compat check yet"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},
