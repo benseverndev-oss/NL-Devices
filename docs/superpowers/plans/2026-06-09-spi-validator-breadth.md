@@ -345,6 +345,8 @@ Expected: **exit 0**, `RESULT: PASS`. `uncov_spi_mode_mismatch` shows `FALSE NEG
         spi_buses.append(sv.SPIBus(b["name"], nodes=nodes))
 
     design = sv.Design(slice_doc["name"], rails=rails, buses=buses, spi_buses=spi_buses)
+    sv.assign_addresses(design)      # KEEP these two existing trailing lines unchanged —
+    return design                    # assign_addresses does I2C auto-addressing
 ```
 
 - [ ] **Step 3: Create the abstract SPI controller block** — `spike/blocks/mcu_spi_controller.yaml`:
@@ -429,8 +431,8 @@ Expected: the `spike` job passes — `block_contract.py` prints `[PASS] spi_node
 
 > All part creation runs in CI (it needs the atopile toolchain + network). Author a temporary CI workflow step or a one-off job that runs the commands below, commits the artifacts back with `[skip ci]` + `permissions: contents: write`, then `git pull`.
 
-- [ ] **Step 1:** In a CI step, `ato create part -s C97521 -a` (W25Q128JVSIQ), then copy the generated `.ato` / `.kicad_sym` / `.kicad_mod` / `.step` into `spike/atopile/elec/src/parts/Winbond_Elec_W25Q128JVSIQ/` (match the existing part-dir naming), un-ignore the `.step` if needed (per `spike/.gitignore`), and commit them back.
-- [ ] **Step 2:** Ingest the part into the ground-truth snapshot: `python3 spike/partdb.py ingest` (EasyEDA fetch for C97521) → updates `spike/parts_snapshot.json`. Commit.
+- [ ] **Step 1:** In a CI step, `ato create part -s C97521 -a` (W25Q128JVSIQ), then copy the generated `.ato` / `.kicad_sym` / `.kicad_mod` / `.step` into `spike/atopile/elec/src/parts/<generated-dir>/` (use the dir name `ato create part` actually emits — the existing dirs use the EasyEDA manufacturer slug like `STMicroelectronics_STM32F103C8T6`; do NOT hardcode it before the CI part-create runs, and use that same name in the `verified_lib.ato` import path in Task 9), un-ignore the `.step` if needed (per `spike/.gitignore`), and commit them back.
+- [ ] **Step 2:** Ingest the part into the ground-truth snapshot: `python3 spike/partdb.py ingest C97521` (the LCSC code is required — a bare `ingest` no-ops; `--from-blocks` is the alternative, but only after Step 3 binds the flash block). EasyEDA fetch → updates `spike/parts_snapshot.json`. Commit.
 - [ ] **Step 3:** Bind the flash block — edit `spike/blocks/spi_flash_w25q.yaml`, add:
 
 ```yaml
