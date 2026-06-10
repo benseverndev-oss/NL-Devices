@@ -1,0 +1,186 @@
+{
+  "nets": [
+    [
+      "Advanced_Monolithic_Systems_AMS1117_3_3:SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR||1",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||23",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||35",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||47",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||8",
+      "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R|2",
+      "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R|2",
+      "Samsung_Electro_Mechanics_CL10A106KP8NNNC:C0603|10\u00b5F \u00b110% 10V X5R|2",
+      "Samsung_Electro_Mechanics_CL10A475KO8NNNC:C0603|4.7\u00b5F \u00b110% 16V X5R|2",
+      "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW|2",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||4",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|2",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|2",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|2",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|2",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|2"
+    ],
+    [
+      "Advanced_Monolithic_Systems_AMS1117_3_3:SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR||2",
+      "Advanced_Monolithic_Systems_AMS1117_3_3:SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR||4",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||1",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||24",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||36",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||48",
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||9",
+      "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R|1",
+      "Samsung_Electro_Mechanics_CL10A106KP8NNNC:C0603|10\u00b5F \u00b110% 10V X5R|1",
+      "Samsung_Electro_Mechanics_CL10A475KO8NNNC:C0603|4.7\u00b5F \u00b110% 16V X5R|1",
+      "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW|2",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||3",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||7",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||8",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|1",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|1",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|1",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|1"
+    ],
+    [
+      "Advanced_Monolithic_Systems_AMS1117_3_3:SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR||3",
+      "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R|1"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||10"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||11"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||12"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||13"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||14",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||1"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||15",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||6"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||16",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||2"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||17",
+      "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL||5"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||18"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||19"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||2"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||20"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||21"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||22"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||25"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||26"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||27"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||28"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||29"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||3"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||30"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||31"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||32"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||33"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||34"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||37"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||38"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||39"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||4"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||40"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||41"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||42"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||43"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||44",
+      "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW|1"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||45"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||46"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||5"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||6"
+    ],
+    [
+      "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL||7",
+      "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW|1",
+      "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R|1"
+    ]
+  ],
+  "parts": [
+    "Advanced_Monolithic_Systems_AMS1117_3_3:SOT-223-3_L6.5-W3.4-P2.30-LS7.0-BR|",
+    "STMicroelectronics_STM32F103C8T6:LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL|",
+    "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R",
+    "Samsung_Electro_Mechanics_CL05A105KA5NQNC:C0402|1\u00b5F \u00b110% 25V X5R",
+    "Samsung_Electro_Mechanics_CL10A106KP8NNNC:C0603|10\u00b5F \u00b110% 10V X5R",
+    "Samsung_Electro_Mechanics_CL10A475KO8NNNC:C0603|4.7\u00b5F \u00b110% 16V X5R",
+    "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW",
+    "UNI_ROYAL_0603WAF1002T5E:R0603|10k\u03a9 \u00b11% 100mW",
+    "Winbond_Elec_W25Q128JVSIQ:SOIC-8_L5.3-W5.3-P1.27-LS8.0-BL|",
+    "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R",
+    "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R",
+    "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R",
+    "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R",
+    "YAGEO_CC0603KRX7R9BB104:C0603|100nF \u00b110% 50V X7R"
+  ]
+}

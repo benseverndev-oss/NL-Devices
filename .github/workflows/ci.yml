@@ -23,6 +23,7 @@ jobs:
         run: |
           python3 place.py --selftest    # pure placement, against committed fixture
           python3 route.py --selftest    # pure output parsers, against committed fixtures
+          python3 netlist.py --selftest   # canonical netlist extractor, against the committed fixture
           python3 seam_validator.py
           python3 block_contract.py --faults
           python3 validator_corpus.py    # adversarial corpus; gates on covered-fault regressions
@@ -93,6 +94,11 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b verified
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Netlist guard — verified connectivity unchanged
+        # Proves the built netlist still equals its golden (parts + pad-to-net membership),
+        # independent of the 0/0 route gate. Runs from repo root; paths are repo-relative.
+        run: |
+          python3 spike/netlist.py --check spike/atopile/elec/layout/verified/verified.kicad_pcb  spike/fixtures/golden/verified.netlist.json
       - name: Route the board (place → DSN → freerouting → SES → DRC → Gerbers)
         # HARD GATE: route.py exits nonzero unless 0 unrouted nets + 0 DRC violations
         # + all required copper layers exported. python3 here is the 3.13 venv; it shells
@@ -113,6 +119,11 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b spi_node
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: Netlist guard — spi_node connectivity unchanged
+        # Proves the built netlist still equals its golden (parts + pad-to-net membership),
+        # independent of the 0/0 route gate. Runs from repo root; paths are repo-relative.
+        run: |
+          python3 spike/netlist.py --check spike/atopile/elec/layout/spi_node/spi_node.kicad_pcb spike/fixtures/golden/spi_node.netlist.json
       - name: Route the SPI board (place → DSN → freerouting → SES → DRC → Gerbers)
         # HARD GATE (independent of the verified board): 0 unrouted + 0 DRC + all copper
         # layers. Separate --work dir so artifacts don't clobber the verified route.
