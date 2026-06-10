@@ -243,9 +243,12 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    `kicad_specctra.py`) drives `ato build` → place → headless **freerouting** → DRC →
    `kicad-cli` Gerbers, **hard-gated on 0 unrouted + 0 DRC + format-valid copper**, and
    `fab_export.build_routed_package` folds the real copper + routed CPL into the package
-   (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). **Still open:** one
-   board / one vertical / 2 layers, deterministic (not DFM) placement, network part-pick at
-   build, and the STM32 block isn't yet in a build target (a fuller board is a follow-up).
+   (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). The STM32 McuBlock
+   is now wired into a build target (`verified_mcu` = real STM32F103C8T6 + LDO + EEPROM),
+   CI-gated to **build + part-pick** — the fuller board decision 0004 deferred. **Still
+   open:** routing *that* 48-pin board through the 0-unrouted/0-DRC gate (the build is the
+   floor; the autoroute is the next step); one vertical / 2 layers, deterministic (not DFM)
+   placement, network part-pick at build.
 8. **Run the cheapest business test (🟠):** 5–10 customer-discovery calls on respin
    WTP and one fab partner conversation on wholesale margin — the two unproven
    assumptions the whole revenue model rests on.

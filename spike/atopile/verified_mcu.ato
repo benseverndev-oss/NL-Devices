@@ -1,0 +1,149 @@
+# Fuller verified board: a REAL microcontroller (STM32F103C8T6) + 3V3 LDO + EEPROM.
+# This is decision 0004's deliberate follow-up to verified_slice (which routed a
+# real LDO+EEPROM but no silicon): compose the STM32 McuBlock that already lived in
+# verified_lib.ato — but was never wired into a build target — into a top-level App
+# so `ato build -b verified_mcu` emits a netlist + manufacturable BOM for a board
+# that actually computes (MCU on its internal 8 MHz RC, I2C1 on PB6/PB7).
+#
+# Blocks are copied verbatim from the proven sources (PowerBlock + SensorBlock from
+# verified_slice.ato, McuBlock from verified_lib.ato); only the App wiring is new.
+
+import ElectricPower
+import I2C
+import Capacitor
+import Resistor
+from "parts/Advanced_Monolithic_Systems_AMS1117_3_3/Advanced_Monolithic_Systems_AMS1117_3_3.ato" import Advanced_Monolithic_Systems_AMS1117_3_3_package
+from "parts/Microchip_Tech_AT24C256C_SSHL_T/Microchip_Tech_AT24C256C_SSHL_T.ato" import Microchip_Tech_AT24C256C_SSHL_T_package
+from "parts/STMicroelectronics_STM32F103C8T6/STMicroelectronics_STM32F103C8T6.ato" import STMicroelectronics_STM32F103C8T6_package
+
+# --- Verified Block: 3V3 LDO power supply (real AMS1117-3.3, LCSC C6186) ------
+module PowerBlock:
+    power_in = new ElectricPower
+    power_out = new ElectricPower
+
+    ldo = new Advanced_Monolithic_Systems_AMS1117_3_3_package
+    ldo.VIN ~ power_in.hv
+    ldo.GND ~ power_in.lv
+    ldo.VOUT ~ power_out.hv
+    ldo.GND ~ power_out.lv
+
+    power_out.voltage = 3.3V +/- 2%
+
+    cap_in = new Capacitor
+    cap_out = new Capacitor
+    cap_in.capacitance = 1uF +/- 20%
+    cap_out.capacitance = 10uF +/- 20%
+    cap_in.unnamed[0] ~ power_in.hv
+    cap_in.unnamed[1] ~ power_in.lv
+    cap_out.unnamed[0] ~ power_out.hv
+    cap_out.unnamed[1] ~ power_out.lv
+
+    assert power_out.voltage within 3.3V +/- 5%
+
+# --- Verified Block: MCU/I2C controller (real STM32F103C8T6, LCSC C8734) ------
+# Runs on its internal 8 MHz RC oscillator (no crystal needed to function), I2C1 on
+# PB6/PB7, programmed via SWD (PA13/PA14, left for a board-level header). Owns the
+# bus: provides the SCL/SDA pull-ups.
+module McuBlock:
+    power = new ElectricPower      # 3V3 rail in
+    i2c = new I2C                  # I2C1 controller (PB6=SCL, PB7=SDA)
+    mcu = new STMicroelectronics_STM32F103C8T6_package
+
+    # power: every VDD/VBAT/VDDA to 3V3, every VSS/VSSA to GND
+    mcu.VDD_1 ~ power.hv
+    mcu.VDD_2 ~ power.hv
+    mcu.VDD_3 ~ power.hv
+    mcu.VBAT ~ power.hv            # no coin cell — tie to the main rail
+    mcu.VDDA ~ power.hv            # analog supply
+    mcu.VSS_1 ~ power.lv
+    mcu.VSS_2 ~ power.lv
+    mcu.VSS_3 ~ power.lv
+    mcu.VSSA ~ power.lv
+
+    # decoupling: 100nF per VDD pin + 4.7uF bulk + 1uF on VDDA
+    dec1 = new Capacitor
+    dec2 = new Capacitor
+    dec3 = new Capacitor
+    bulk = new Capacitor
+    deca = new Capacitor
+    dec1.capacitance = 100nF +/- 20%
+    dec2.capacitance = 100nF +/- 20%
+    dec3.capacitance = 100nF +/- 20%
+    bulk.capacitance = 4.7uF +/- 20%
+    deca.capacitance = 1uF +/- 20%
+    dec1.unnamed[0] ~ power.hv
+    dec1.unnamed[1] ~ power.lv
+    dec2.unnamed[0] ~ power.hv
+    dec2.unnamed[1] ~ power.lv
+    dec3.unnamed[0] ~ power.hv
+    dec3.unnamed[1] ~ power.lv
+    bulk.unnamed[0] ~ power.hv
+    bulk.unnamed[1] ~ power.lv
+    deca.unnamed[0] ~ power.hv
+    deca.unnamed[1] ~ power.lv
+
+    # reset: NRST pull-up + 100nF to GND (standard RC)
+    nrst_pullup = new Resistor
+    nrst_cap = new Capacitor
+    nrst_pullup.resistance = 10kohm +/- 5%
+    nrst_cap.capacitance = 100nF +/- 20%
+    nrst_pullup.unnamed[0] ~ mcu.NRST
+    nrst_pullup.unnamed[1] ~ power.hv
+    nrst_cap.unnamed[0] ~ mcu.NRST
+    nrst_cap.unnamed[1] ~ power.lv
+
+    # BOOT0 -> GND via 10k: boot from main flash
+    boot0_pulldown = new Resistor
+    boot0_pulldown.resistance = 10kohm +/- 5%
+    boot0_pulldown.unnamed[0] ~ mcu.BOOT0
+    boot0_pulldown.unnamed[1] ~ power.lv
+
+    # I2C1 (PB6/PB7) onto the typed bus, with the bus pull-ups
+    i2c.scl.reference ~ power
+    i2c.sda.reference ~ power
+    mcu.PB6 ~ i2c.scl.line
+    mcu.PB7 ~ i2c.sda.line
+    scl_pullup = new Resistor
+    sda_pullup = new Resistor
+    scl_pullup.resistance = 4.7kohm +/- 5%
+    sda_pullup.resistance = 4.7kohm +/- 5%
+    scl_pullup.unnamed[0] ~ i2c.scl.line
+    scl_pullup.unnamed[1] ~ power.hv
+    sda_pullup.unnamed[0] ~ i2c.sda.line
+    sda_pullup.unnamed[1] ~ power.hv
+
+    assert power.voltage within 3.3V +/- 5%
+
+# --- Verified Block: I2C sensor (real AT24C256 EEPROM, LCSC C6482) -----------
+module SensorBlock:
+    power = new ElectricPower
+    i2c = new I2C
+    eeprom = new Microchip_Tech_AT24C256C_SSHL_T_package
+    eeprom.VCC ~ power.hv
+    eeprom.GND ~ power.lv
+    eeprom.SCL ~ i2c.scl.line
+    eeprom.SDA ~ i2c.sda.line
+    eeprom.A0 ~ power.lv      # address pins low -> 0x50
+    eeprom.A1 ~ power.lv
+    eeprom.A2 ~ power.lv
+    eeprom.WP ~ power.lv      # write-protect off
+    assert power.voltage within 3.3V +/- 5%
+
+module App:
+    power5v = new ElectricPower
+    power3v3 = new ElectricPower
+    assert power5v.voltage within 5V +/- 5%
+
+    psu = new PowerBlock
+    mcu = new McuBlock
+    sensor = new SensorBlock
+
+    psu.power_in ~ power5v
+    psu.power_out ~ power3v3
+    mcu.power ~ power3v3
+    sensor.power ~ power3v3
+
+    i2c_bus = new I2C
+    i2c_bus.frequency = 400kHz
+    mcu.i2c ~ i2c_bus
+    sensor.i2c ~ i2c_bus

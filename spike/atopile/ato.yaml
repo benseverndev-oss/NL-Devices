@@ -15,3 +15,5 @@ builds:
     entry: sensor_node.ato:AppFault3AddrCollision
   verified:
     entry: verified_slice.ato:App
+  verified_mcu:
+    entry: verified_mcu.ato:App

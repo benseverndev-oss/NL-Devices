@@ -92,6 +92,16 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ato build -b verified
           echo "== located boards ==" ; find . -name '*.kicad_pcb'
+      - name: ato build verified_mcu (real STM32F103C8T6 + LDO + EEPROM)
+        # HARD GATE: the fuller board (decision 0004 follow-up) must compile and pick
+        # parts — a real netlist + manufacturable BOM for a board that actually computes
+        # (STM32 McuBlock, never before wired into a build target). Routing this 48-pin
+        # board is a separate, harder step; proving it BUILDS is the floor.
+        working-directory: spike/atopile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ato build -b verified_mcu
+          echo "== verified_mcu board ==" ; find . -path '*verified_mcu*' -name '*.kicad_pcb'
       - name: Route the board (place → DSN → freerouting → SES → DRC → Gerbers)
         # HARD GATE: route.py exits nonzero unless 0 unrouted nets + 0 DRC violations
         # + all required copper layers exported. python3 here is the 3.13 venv; it shells
