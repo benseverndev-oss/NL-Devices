@@ -122,10 +122,12 @@ jobs:
             --jar freerouting.jar \
             --specctra spike/scripts/kicad_specctra.py \
             --work spike/build/route_mcu
-      - name: Diagnose verified_mcu DSN/SES (via definitions)
+      - name: Diagnose verified_mcu route (mask flag + freerouting convergence)
         if: always()
         run: |
-          echo "=== DSN: structure / rules / via / padstack ==="
-          grep -nE '\(via|padstack|\(rule|\(structure|\(boundary|\(layer ' spike/build/route_mcu/board.dsn | head -120 || true
-          echo "=== SES: via usage ==="
-          grep -cE '\(via ' spike/build/route_mcu/board.ses || true
+          echo "=== mask flag in routed board (want: yes) ==="
+          grep -o 'allow_soldermask_bridges_in_footprints [a-z]*' spike/build/route_mcu/routed.kicad_pcb | head || true
+          echo "=== freerouting pass summary (did it converge or hit the pass cap?) ==="
+          grep -E 'unrouted|incomplete_count|pass #' spike/build/route_mcu/freerouting.log | tail -20 || true
+          echo "=== DRC violation types (non solder_mask?) ==="
+          python3 -c "import json,collections; d=json.load(open('spike/build/route_mcu/drc.json')); print(collections.Counter(v.get('type') for v in d.get('violations',[])))" || true

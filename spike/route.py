@@ -145,6 +145,10 @@ def pipeline(board: str, jar: str, specctra: str, workdir: str) -> int:
     # 4. import the routed session back into a board (pcbnew)
     routed = work / "routed.kicad_pcb"
     import_ses(specctra, str(placed), str(ses), str(routed))
+    # pcbnew's LoadBoard→SaveBoard round-trip drops the placed board's fine-pitch mask
+    # allowance, so re-assert it on the routed board before DRC reads it.
+    routed.write_text(place.allow_mask_bridges(routed.read_text(encoding="utf-8")),
+                      encoding="utf-8")
 
     # 5. DRC on the routed board
     violations = parse_drc(run_drc(str(routed), str(work / "drc.json")))
