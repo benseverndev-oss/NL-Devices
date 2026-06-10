@@ -64,6 +64,13 @@ def spi_baseline() -> sv.Design:
     )
 
 
+def _bad_spi_floating_power() -> sv.Design:
+    d = spi_baseline(); d.name = "bad_spi_floating_power"
+    # an SPI peripheral on no rail — its supply floats
+    d.spi_buses[0].nodes.append(sv.SPINode("orphan", "peripheral", chip_select="cs1", mode=0))
+    return d
+
+
 def _bad_spi_no_controller() -> sv.Design:
     d = spi_baseline(); d.name = "bad_spi_no_controller"
     d.spi_buses[0].nodes = [n for n in d.spi_buses[0].nodes if n.role != "controller"]
@@ -167,6 +174,8 @@ CORPUS = [
      "note": "two SPI peripherals share CS cs0"},
     {"build": _bad_spi_no_controller, "kind": "bad_covered", "expect": {"spi-single-controller"},
      "note": "SPI bus with no master"},
+    {"build": _bad_spi_floating_power, "kind": "bad_covered", "expect": {"power-connectivity"},
+     "note": "SPI peripheral on no rail"},
     # bad, covered (regression guards — must fire the named check)
     {"build": _bad_power_domain,   "kind": "bad_covered", "expect": {"power-domain"},      "note": "MCU on 5V rail"},
     {"build": _bad_no_pullups,     "kind": "bad_covered", "expect": {"i2c-pullups"},       "note": "no SCL/SDA pull-up"},

@@ -262,15 +262,19 @@ def check_i2c_multimaster(d: Design) -> list[str]:
 
 
 def check_power_connectivity(d: Design) -> list[str]:
-    """Every block that participates on a bus must also draw from a power rail; an
-    active device on no rail has a floating supply. A structural false-negative the
-    other checks miss (they only reason about blocks already on a rail/bus)."""
+    """Every block that participates on a bus (I2C or SPI) must also draw from a power
+    rail; an active device on no rail has a floating supply."""
     powered = {block for r in d.rails for (block, _req_v, _tol) in r.sinks}
     errs = []
     for b in d.buses:
         for n in b.nodes:
             if n.block not in powered:
                 errs.append(f"POWER: block '{n.block}' on bus '{b.name}' draws from no "
+                            f"rail (supply floats)")
+    for b in d.spi_buses:
+        for n in b.nodes:
+            if n.block not in powered:
+                errs.append(f"POWER: block '{n.block}' on SPI bus '{b.name}' draws from no "
                             f"rail (supply floats)")
     return errs
 
