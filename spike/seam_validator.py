@@ -7,7 +7,7 @@ seam-validation layer is something we own. This module shows it is small,
 deterministic, and substrate-independent: it runs over a typed block-graph (our
 "verified block" contract from SPIKE.md §3), not over any one EDA tool's internals.
 
-It checks the SPIKE.md §4 seams — now 11 checks across power, I2C, and SPI topology
+It checks the SPIKE.md §4 seams — now 12 checks across power, I2C, and SPI topology
 (see the `CHECKS` registry). The original three: power-domain compatibility, I2C
 pull-ups present, I2C address uniqueness.
 
@@ -57,7 +57,7 @@ class SPINode:
     block: str
     role: str                        # 'controller' | 'peripheral'
     chip_select: str | None = None   # CS net id (peripherals only)
-    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — modelled, NOT yet checked
+    mode: int = 0                    # SPI mode 0..3 (CPOL/CPHA) — checked by spi-mode-compat
 
 
 @dataclass
@@ -247,6 +247,23 @@ def check_spi_chip_select_unique(d: Design) -> list[str]:
     return errs
 
 
+def check_spi_mode_compat(d: Design) -> list[str]:
+    """On a well-formed SPI bus (exactly one controller), every peripheral must use the
+    controller's SPI mode (CPOL/CPHA). Skipped when the controller count isn't one —
+    spi-single-controller owns that fault and there's no unambiguous reference mode."""
+    errs = []
+    for b in d.spi_buses:
+        controllers = [n for n in b.nodes if n.role == 'controller']
+        if len(controllers) != 1:
+            continue
+        ref = controllers[0]
+        for n in b.nodes:
+            if n.role == 'peripheral' and n.mode != ref.mode:
+                errs.append(f"SPI: bus '{b.name}' peripheral '{n.block}' is mode {n.mode} "
+                            f"but controller '{ref.block}' is mode {ref.mode} (CPOL/CPHA mismatch)")
+    return errs
+
+
 def check_i2c_multimaster(d: Design) -> list[str]:
     """At most one controller (bus master) per I2C bus. Two masters sharing SCL/SDA is
     an arbitration / clock-ownership hazard the single-controller topology here does
@@ -288,7 +305,8 @@ CHECKS = [("power-domain", check_power_domains),
           ("power-connectivity", check_power_connectivity),
           ("i2c-multimaster", check_i2c_multimaster),
           ("spi-chip-select-unique", check_spi_chip_select_unique),
-          ("spi-single-controller", check_spi_single_controller)]
+          ("spi-single-controller", check_spi_single_controller),
+          ("spi-mode-compat", check_spi_mode_compat)]
 
 
 def validate(d: Design) -> dict[str, list[str]]:
