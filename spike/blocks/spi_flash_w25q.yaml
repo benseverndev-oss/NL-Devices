@@ -1,0 +1,7 @@
+id: spi_flash_w25q
+version: 0.1.0
+function: "SPI NOR flash (abstract; bound to W25Q128 / C97521 in the routed-board workstream)"
+tags: [memory, flash, spi]
+ports:
+  power: {type: power, role: sink, voltage: 3.3, tolerance: 0.05, current_ma: 25}
+  spi: {type: spi, role: peripheral, chip_select: cs0, mode: 0}

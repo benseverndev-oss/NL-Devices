@@ -49,7 +49,7 @@ def _validate_spec(d: dict, src: str) -> None:
             raise ValueError(f"{src}: missing required field '{k}'")
     for pname, p in d["ports"].items():
         t = p.get("type")
-        if t not in ("power", "i2c"):
+        if t not in ("power", "i2c", "spi"):
             raise ValueError(f"{src}: port '{pname}' has unknown type {t!r}")
         if t == "power":
             for k in ("role", "voltage", "tolerance"):
@@ -57,12 +57,17 @@ def _validate_spec(d: dict, src: str) -> None:
                     raise ValueError(f"{src}: power port '{pname}' missing '{k}'")
             if p["role"] not in ("source", "sink"):
                 raise ValueError(f"{src}: power port '{pname}' bad role {p['role']!r}")
-        else:  # i2c
+        elif t == "i2c":
             if p.get("role") not in ("controller", "peripheral"):
                 raise ValueError(f"{src}: i2c port '{pname}' bad role {p.get('role')!r}")
             if p["role"] == "peripheral" and "address_base" not in p:
                 raise ValueError(f"{src}: i2c peripheral '{pname}' missing 'address_base' "
                                  f"(required — atopile cannot infer it)")
+        else:  # spi
+            if p.get("role") not in ("controller", "peripheral"):
+                raise ValueError(f"{src}: spi port '{pname}' bad role {p.get('role')!r}")
+            if p["role"] == "peripheral" and "chip_select" not in p:
+                raise ValueError(f"{src}: spi peripheral '{pname}' missing 'chip_select'")
 
 
 def load_blocks(blocks_dir: Path = HERE / "blocks") -> dict[str, BlockSpec]:
@@ -127,6 +132,8 @@ def build_design(slice_doc: dict, blocks: dict[str, BlockSpec],
 
     buses = []
     for b in slice_doc.get("buses", []):
+        if b.get("type") == "spi":
+            continue                      # built below
         nodes, pullup = [], None
         for ref in b.get("members", []):
             inst, sp = resolve(ref)
@@ -141,7 +148,19 @@ def build_design(slice_doc: dict, blocks: dict[str, BlockSpec],
         buses.append(sv.I2CBus(b["name"], nodes=nodes, pullup_ohms=pullup,
                                speed_hz=b.get("speed_hz", 100_000)))
 
-    design = sv.Design(slice_doc["name"], rails=rails, buses=buses)
+    spi_buses = []
+    for b in slice_doc.get("buses", []):
+        if b.get("type") != "spi":
+            continue
+        nodes = []
+        for ref in b.get("members", []):
+            inst, sp = resolve(ref)
+            nodes.append(sv.SPINode(block=inst, role=sp["role"],
+                                    chip_select=sp.get("chip_select"),
+                                    mode=sp.get("mode", 0)))
+        spi_buses.append(sv.SPIBus(b["name"], nodes=nodes))
+
+    design = sv.Design(slice_doc["name"], rails=rails, buses=buses, spi_buses=spi_buses)
     sv.assign_addresses(design)          # auto-assign distinct I2C addresses
     return design
 
@@ -199,6 +218,11 @@ if __name__ == "__main__":
     ok = report(design)
 
     all_ok = ok
+
+    spi_design = load_slice(HERE / "slices" / "spi_node.yaml", blocks)
+    print("\nvalidating authored SPI slice:")
+    all_ok &= report(spi_design)
+
     if "--faults" in sys.argv:
         print("\ninjecting seam faults (each must be caught):")
         for label, fd, expect in inject_faults(design):
