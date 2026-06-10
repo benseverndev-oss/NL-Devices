@@ -7,7 +7,7 @@ seam-validation layer is something we own. This module shows it is small,
 deterministic, and substrate-independent: it runs over a typed block-graph (our
 "verified block" contract from SPIKE.md §3), not over any one EDA tool's internals.
 
-It checks the SPIKE.md §4 seams — now 11 checks across power, I2C, and SPI topology
+It checks the SPIKE.md §4 seams — now 12 checks across power, I2C, and SPI topology
 (see the `CHECKS` registry). The original three: power-domain compatibility, I2C
 pull-ups present, I2C address uniqueness.
 
