@@ -174,6 +174,15 @@ Register as `("power-connectivity", check_power_connectivity)` and
 - `seam_validator.py`'s own `__main__` selftest computes its verdict from only the
   `power-domain` / `i2c-pullups` / `i2c-address` columns, so adding checks to `CHECKS`
   does not affect it.
+- **Wider blast radius (beyond the corpus): `CHECKS` runs everywhere `sv.validate()` is
+  called.** `block_contract.py --faults` injects an address-collision fixture
+  (`inject_faults` fault 3) that appends `sensor_b` to the bus without a rail, and
+  asserts the *exact* failing-check set — so `power-connectivity` co-fires and breaks it.
+  Same one-line fix as the corpus: power `sensor_b` on the 3V3 rail. The
+  orchestrator/eval composer (`orchestrator._compose`) derives `rail3_sinks` and
+  `bus_members` from the same instance lists, so every bus node is always a rail sink and
+  there is one controller — those composed designs are clean by construction (no fix
+  needed); `eval_planner` reject-cases use substring matching, tolerant of extra checks.
 
 ### Success criteria (Workstream 2)
 
