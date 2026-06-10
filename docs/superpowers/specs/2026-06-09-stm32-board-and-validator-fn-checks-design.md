@@ -18,7 +18,7 @@ board-first:
 2. **Two validator false-negative checks.** Add `power-connectivity` and
    `i2c-multimaster` to `seam_validator.py`. The adversarial corpus already stages both
    faults as published false-negatives; implementing the checks and reclassifying those
-   corpus entries drops the measured false-negative rate from 2/11 to 0/11 and turns
+   corpus entries drops the measured false-negative rate from 2/9 (22%) to 0/9 (0%) and turns
    them into hard regression guards.
 
 The two workstreams touch disjoint code and disjoint CI gates and can land
@@ -179,7 +179,8 @@ Register as `("power-connectivity", check_power_connectivity)` and
 
 - `python3 validator_corpus.py` exits 0: 0 false positives, 0 covered-fault regressions,
   both new checks catch their (now `bad_covered`) cases, and the reported **measured
-  false-negative rate is 0%** over representable known-bad designs.
+  false-negative rate is 0/9 (0%)** over the known-bad designs (the harness denominator
+  is `total_bad = bad_covered + bad_uncovered`; the 2 `good` designs are not counted).
 - `python3 seam_validator.py` still exits 0.
 - `NOT_MODELLED` unchanged (the genuinely-unrepresentable roadmap remains published).
 
