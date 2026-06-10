@@ -246,9 +246,12 @@ Ordered by *unlocks-the-most* / *cheapest-proof-first*:
    (BOM/CPL from the routed board; bound ICs reconcile to the snapshot). The STM32 McuBlock
    is now wired into a build target (`verified_mcu` = real STM32F103C8T6 + LDO + EEPROM),
    CI-gated to **build + part-pick** — the fuller board decision 0004 deferred. **Still
-   open:** routing *that* 48-pin board through the 0-unrouted/0-DRC gate (the build is the
-   floor; the autoroute is the next step); one vertical / 2 layers, deterministic (not DFM)
-   placement, network part-pick at build.
+   open — routing *that* 48-pin board** (the build is the floor; an autoroute attempt
+   surfaced two concrete blockers): (1) freerouting places **0 vias**, so it can't complete
+   a dense 2-layer route (13/42 nets unrouted) — needs via-padstack support in the Specctra
+   DSN export (`kicad_specctra.py`); (2) the LQFP-48 0.5mm-pitch pads trip 29
+   `solder_mask_bridge` DRC errors — a fine-pitch mask-policy question. Plus the standing
+   limits: one vertical / 2 layers, deterministic (not DFM) placement, network part-pick.
 8. **Run the cheapest business test (🟠):** 5–10 customer-discovery calls on respin
    WTP and one fab partner conversation on wholesale margin — the two unproven
    assumptions the whole revenue model rests on.
