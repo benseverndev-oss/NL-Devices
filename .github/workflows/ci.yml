@@ -53,33 +53,6 @@ jobs:
         # (and runs the offline consistency gate at the end). ngspice is optional here.
         run: bash scripts/setup.sh
 
-  make-golden:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/feat/netlist-guard'   # one-shot, this branch only
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install pinned atopile toolchain
-        run: bash scripts/setup.sh   # use the SAME install the route job uses
-      - name: Build both boards + emit goldens
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          ( cd spike/atopile && ato build -b verified && ato build -b spi_node )
-          mkdir -p spike/fixtures/golden
-          python3 spike/netlist.py --emit spike/atopile/elec/layout/verified/verified.kicad_pcb  > spike/fixtures/golden/verified.netlist.json
-          python3 spike/netlist.py --emit spike/atopile/elec/layout/spi_node/spi_node.kicad_pcb > spike/fixtures/golden/spi_node.netlist.json
-      - name: Commit goldens back
-        run: |
-          git config user.name benzsevern
-          git config user.email benzsevern@gmail.com
-          git add spike/fixtures/golden/
-          git commit -m "Capture golden netlists for verified + spi_node [skip ci]" || echo "nothing to commit"
-          git push
-
   route:
     name: Autoroute → routed copper (verified board)
     runs-on: ubuntu-latest
